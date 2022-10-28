@@ -18,50 +18,20 @@ cd $(dirname $2)
 VARS="`set -o posix ; set`"
 
 source $(basename $2)
-
+echo "ibase=$ibase" > Degradome_${1}.txt
 grep -vFe "$VARS" <<<"$(set -o posix ; set)" |
     grep -v ^VARS= | grep -vE "^BASH|^SHLVL" |
-    sed 's/\[[0-9]\]=//g' > Degradome_${1}.txt
+    sed 's/\[[0-9]\]=//g' >> Degradome_${1}.txt
 
 unset VARS
 
 
-#Variables
-# conda_env_main="ssl-bio"
-# conda_env_py2="ssl-bio-py2"
-# seq_adapters="adapters.fa"
-# cores=5
-
-
-#Directories
-# root="/media/saul/Elements/Bioinformatics/Degradome-$ibase"
-# outdir="$root/output"
-
 conda_dir="$HOME/.local/bin/miniconda3"
 conda_env_main_dir="$conda_dir/envs/$conda_env_main"
-# pydeg_script=" /media/saul/Documentos/Shared/Cloned/PyDegradome"
-# pydeg_script="/home/saul/Scripts/ssl-bio/Gaglia-Python-PARE-like-script"
 star_extra_scripts="/media/saul/Documentos/Shared/Cloned/STAR/extras/scripts"
 
 #Variables 2
 adapter_path=$(find $conda_env_main_dir -name $seq_adapters)
-
-#Annotation files
-# ref_gff="$root/references/Annotation/Arabidopsis_thaliana.TAIR10.53.gff3"
-# ref_gtf_sorted="$root/references/Annotation/Arabidopsis_thaliana.TAIR10.53_sorted_awk.gtf"
-# ref_gff_representative="$root/references/Annotation/Arabidopsis_thaliana.TAIR10.53_merged_loci.gff3"
-
-#Bowtie indexes
-# rRNA_bowtie_index="$root/references/Index/Bowtie_index_At_rRNA/Bowtie_index_At_rRNA"
-# bowtie_index_genome="$root/references/Index/Bowtie_index_At_dna_toplevel/Bowtie_index_At_dna_toplevel"
-# bowtie_index_Tx="$root/references/Index/Bowtie_index_At_cDNA/Bowtie_index_At_cDNA"
-
-#Star index
-# star_index_genome="$root/references/Index/Star_index_At_dna_2"
-# star_index_Tx="$root/references/Index/Star_index_At_cDNA"
-
-#file's name
-# ifiles=("SRR10759112" "SRR10759113" "SRR10759114" "SRR10759115")
 
 #Suffixes for mapping
 imapping=("star" "tophat")
@@ -69,11 +39,6 @@ imapping=("star" "tophat")
 #Suffixes for subsampling
 idirsuffix=("" "_sub")
 
-## pyDegradome settings
-# pydeg_script_settings=("0.95 4" "0.99 3")
-
-## List of comparisons
-# pydeg_comp_list=("SRR10759112  SRR10759114" "SRR10759113  SRR10759115")
 
 ##Step counter
 stp=1

@@ -2,15 +2,6 @@
 
 # Description: Wrapper to run R scripts
 
-# Check the number of arguments
-# if [[ -z $1 ]]
-# then
-#     echo "No filename for source file was po. Exiting..."
-#     exit 1
-# else
-#     echo "$1 will be used as basename for input/output"
-#     ibase=$1
-# fi
 # Import variables
 source Env_variables/Degradome_Oliver-2022.txt 
 
@@ -20,8 +11,12 @@ dir=$(pwd)
 # echo $dir
 
 # Run RScripts
-# echo "Running 00-Initialization.R"
-# Rscript ${script_dir}/R/00-Initialization.R -d $dir -b $ibase
+echo "Running 00-Initialization.R"
+outfile=${supp_data_dir}/"R/Initialization_variables.RData"
+if [[ ! -f $outfile ]]
+then
+    Rscript ${script_dir}/R/00-Initialization.R -d $dir -b $ibase
+fi
 
 echo "Running 01-Annotation-shared_peak_classification.R"
 Rscript ${script_dir}/R/01-Annotation-shared_peak_classification.R -d $dir
@@ -30,15 +25,20 @@ echo "Running 02-Filtering_Classification_Pooling.R"
 Rscript ${script_dir}/R/02-Filtering_Classification_Pooling.R -d $dir
 
 echo "Running 03-Drawing_Dplots.R"
-Rscript ${script_dir}/R/03-Drawing_Dplots.R -d $dir
+# Rscript ${script_dir}/R/03-Drawing_Dplots.R -d $dir
 
 echo "Running 04-GetPeakSeq.R "
-Rscript ${script_dir}/R/04-GetPeakSeq.R -d $dir
+# Rscript ${script_dir}/R/04-GetPeakSeq.R -d $dir
 
 echo "Running 05-Peak_miRNA_alignment.py"
-python ${script_dir}/Aux/05-Peak_miRNA_alignment.py -rd $dir
+# inputfile=${supp_data_dir}/miRNA_seq/miRNA_sequences.fa
+# if [[ ! -f ${inputfile} ]]
+# then
+#     /bin/bash ${script_dir}/Aux/05-Get_miRNA_seqs.sh $dir
+# fi
+# python ${script_dir}/Aux/05-Peak_miRNA_alignment.py -rd $dir
 
-conda deactivate
+# conda deactivate
 echo "Running 05-Report-settings.R"
 Rscript ${script_dir}/R/05-Report-settings.R -d $dir
 
