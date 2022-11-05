@@ -3,9 +3,10 @@
 ## Using the read counts it calculates the size factor used for normalization
 
 ## Libraries
-library(DESeq2)
-library(tidyverse)
-library(optparse)
+suppressPackageStartupMessages(library(DESeq2))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(data.table))
 
 
 ## Parse arguments
@@ -36,18 +37,29 @@ if (!file.exists(out_file)) {
 
     ## Merge counts
     counts_list <- list()
+    list_counts <- list.files(opt$wd, pattern ="txt|tsv")
+    ## list_counts <- list.files(opt$wd, pattern ="tsv")
     for (base_name in sample_list) {
         ## Get input file
-        isel <- grepl(base_name,list.files(opt$wd))
-        ifile <- list.files(opt$wd)[isel]
-        cat(file.path(opt$wd,ifile),"\n")
+        isel <- grepl(base_name,list_counts)
+        ifile <- list_counts[isel]
         ## Read table
-        idf <- read.table(file.path(opt$wd,ifile), header=FALSE)
-        colnames(idf) <- c("ID","Count")
+        iext <- unlist(strsplit(ifile,"\\."))
+        iext <- iext[length(iext)]
+        if (iext == "tsv") {
+            idf <- read.table(file.path(opt$wd,ifile), header=FALSE)
+            colnames(idf) <- c("ID","Count")
+            idf$ID <- gsub("transcript:", "", idf$ID)
+        } else {
+            idf <- read.table(file.path(opt$wd,ifile), header=TRUE)
+            icols=colnames(idf)[c(1,ncol(idf))]
+            idf <- dplyr::select(idf,all_of(icols))
+            colnames(idf) <- c("ID","Count")
+        }
         counts_list[[base_name]] <- idf
     }
     counts_data <- counts_list %>% reduce(full_join, by='ID')
-    rownames(counts_data) <- gsub("transcript:", "", counts_data[,1])
+    rownames(counts_data) <- counts_data[,1]
     counts_data <- counts_data[,-1]
     colnames(counts_data) <- names(counts_list)
 

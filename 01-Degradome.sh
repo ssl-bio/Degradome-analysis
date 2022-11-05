@@ -1,6 +1,7 @@
 #!/bin/bash
 
-#Pipeline to perform a degradome analysis (Gaglia-2015, Plos pathogens 11) 
+
+#Pipeline to perform a degradome analysis
 #==================================================
 # Check the number of arguments
 if [[ -z $1 ]]
@@ -12,37 +13,23 @@ else
     ibase=$1
 fi
 
-#Set variables
-cd $(dirname $2)
-
-VARS="`set -o posix ; set`"
-
-source $(basename $2)
-echo "ibase=$ibase" > Degradome_${1}.txt
-grep -vFe "$VARS" <<<"$(set -o posix ; set)" |
-    grep -v ^VARS= | grep -vE "^BASH|^SHLVL" |
-    sed 's/\[[0-9]\]=//g' >> Degradome_${1}.txt
-
-unset VARS
+# Import variables
+ivars=Env_variables/Degradome_${1}.txt
+if [[ ! -f ${ivars} ]]
+then
+    /bin/bash Scripts/Aux/00-Variable_setup.sh ${1} Degradome_vars_mint.txt
+else
+    source ${ivars}
+fi
 
 
-conda_dir="$HOME/.local/bin/miniconda3"
-conda_env_main_dir="$conda_dir/envs/$conda_env_main"
-star_extra_scripts="/media/saul/Documentos/Shared/Cloned/STAR/extras/scripts"
 
-#Variables 2
-adapter_path=$(find $conda_env_main_dir -name $seq_adapters)
-
-#Suffixes for mapping
-imapping=("star" "tophat")
-
-#Suffixes for subsampling
-idirsuffix=("" "_sub")
-
+# conda_dir="$HOME/.local/bin/miniconda3"
+# conda_env_main_dir="$conda_dir/envs/$conda_env_main"
 
 ##Step counter
 stp=1
-#==================================================
+
 #Functions
 #function to test/make dirs
 dir_exist () {
@@ -52,6 +39,7 @@ dir_exist () {
     fi
 }
 
+# Loop for quality control
 qc_loop () {
     for ifastq in $(ls $1 | grep -v txt)
     do
@@ -82,6 +70,7 @@ source activate $conda_env_main
 #Abort if get any error
 set -eo pipefail
 
+# Change to output dir
 cd $output_dirB
 
 QC_dir="00-Quality_control"
@@ -97,7 +86,7 @@ dir_exist $idir
 qc_loop $idir_prev $idir
 
 ## 02 - Filter by length, trimm adapter and quality filter
-echo "$stp - Filter by length, trimm adapter and quality filter"
+echo "$stp - Trim adapter"
 stp=$((stp+1))
 idir_prev="01-fastq"
 idir="02-fastq_Len-Trim-Q_filtered"
@@ -196,112 +185,8 @@ conda deactivate
 source activate $conda_env_main
 set -u
 
-# 07- Map to genome [star]
-echo "$stp - Map to genome [star]"
-stp=$((stp+1))
-idir_prev="03-fastq_No-rRNA"
-idir="04-sam_genomic_star_raw"
-dir_exist $idir
-for ifastq in $(ls $idir_prev | grep fastq)
-do
-    ifile=$(basename $ifastq)
-    if [ ! -f $idir/${ifile}_Aligned.out.sam ]
-    then
-	STAR --runThreadN $cores --genomeDir $star_index_genome \
-	     --sjdbGTFfile $ref_gtf_sorted \
-	     --sjdbGTFtagExonParentTranscript Parent \
-	     --alignIntronMin 25 --alignIntronMax 3000 \
-	     --outSAMtype SAM \
-	     --outSAMstrandField intronMotif \
-	     --outReadsUnmapped Fastx \
-	     --readFilesIn $idir_prev/$ifile \
-	     --outSAMmultNmax -1 --outMultimapperOrder Random \
-	     --quantMode TranscriptomeSAM GeneCounts\
-	     --outFilterMultimapNmax 1 --outFilterMismatchNmax 2 \
-	     --outFileNamePrefix $idir/${ifile}_ \
-	     --sjdbOverhang 50 --seedSearchStartLmax 30
-    fi
-done
-#Summarize read numbers
-if [ ! -f $idir/Log_reads.txt ]
-then
-    ilogs=($(ls $idir | grep Log.final.out))
-    for ilog in ${ilogs[@]}
-    do
-	readarray -d . -t strarr <<< "$ilog"
-	ibase=${strarr[0]}
-	ireads=$(cat $idir/$ilog | grep "Uniquely mapped reads number" | awk 'BEGIN {FS="|"} ; {print $2}')
-	echo $ibase, $ireads >> $idir/Log_reads.txt
-    done
-fi
 
-## 08 - Sort sam and add XS attribute [star]
-echo "$stp - Sort sam and add XS attribute [star]"
-stp=$((stp+1))
-idir_prev="04-sam_genomic_star_raw"
-idir="04-sam_genomic_star"
-# cd $idir_prev
-dir_exist $idir
-#Mv summary file
-if [ ! -f $idir/Log_reads.txt ]
-then
-    mv $idir_prev/Log_reads.txt $idir
-fi
-
-for ifile in "${isamples[@]}"
-do
-    outfile=${ifile}.mapped_genome.sam
-    if [ ! -f $idir/$outfile ]
-    then
-	awk '{
-          if(substr($1,1,1)=="@"){print $0}
-          }' $idir_prev/${ifile}*.sam > $idir/01-header.sam
-
-	awk '{if(NF<=16 && $NF ~ "nM") print $0}' $idir_prev/${ifile}*.sam |
-	    awk -v strType=1 \
-		-f $star_extra_scripts/tagXSstrandedData.awk > $idir/02-XStagadded.sam
-	
-	awk '{if (NF == 16 && $NF ~ "XS") {print $0}}' $idir_prev/${ifile}*.sam > \
-	    $idir/03-wXStag.sam
-
-	cd $idir
-	cat 01-* 02-* 03-* > ${ifile}_XS_tmp.sam
-	
-	#Sort files
-	samtools sort  --threads $cores --output-fmt SAM -T sample.sort -o $outfile ${ifile}_XS_tmp.sam
-
-	#Rm temp files
-	rm [0-9]*-*.sam *tmp.sam
-	cd ../
-    fi
-done
-
-## 09 - Subsample SAM files
-echo "$stp - Subsample SAM files"
-stp=$((stp+1))
-for imap in "${imapping[@]}"
-do
-    idir_prev="04-sam_genomic_$imap"
-    idir="04-sam_genomic_${imap}_sub"
-    dir_exist $idir
-    while read -r line;
-    do
-	ibase=$(echo "$line" | cut -d " " -f 1)
-	iprop=$(echo "$line" | cut -d " " -f 3)
-	ifile=$(ls $idir_prev | grep $ibase | grep ".sam")
-	infile=${idir_prev}/${ifile}
-	outfile=${idir}/${ibase}_sub.sam
-	if [ -a $infile ]
-	then
-	    if [ ! -f $outfile ]
-	    then
-		picard DownsampleSam I=$infile O=$outfile P=$iprop
-	    fi
-	fi
-    done < $idir_prev/Prop_reads.txt
-done
-
-# 09 - PyDegradome
+# 07 - PyDegradome
 echo "$stp - PyDegradome"
 stp=$((stp+1))
 set +u
@@ -309,115 +194,86 @@ conda deactivate
 source activate $conda_env_py2
 set -u
 
-for iDsuffix in "${idirsuffix[@]}"
+idir_prev="04-sam_genomic_tophat"
+idir="05-pyDegradome_tophat"
+dir_exist $idir
+for isettings in "${pydeg_script_settings[@]}"
 do
-    for imap in "${imapping[@]}"
+    for icomparisons in "${pydeg_comp_list[@]}"
     do
-	
-	idir_prev="04-sam_genomic_${imap}${iDsuffix}"
-	idir="05-pyDegradome_${imap}${iDsuffix}"
-	dir_exist $idir
-	for isettings in "${pydeg_script_settings[@]}"
-	do
-	    for icomparisons in "${pydeg_comp_list[@]}"
-	    do
-		icomp=(${icomparisons[@]})
-		iset=(${isettings[@]})
+	icomp=(${icomparisons[@]})
+	iset=(${isettings[@]})
 
-		#First comparison
-		echo "First comparison with MF=${iset[0]} and SL=${iset[1]}"
-		outfile=$idir/t_${icomp[0]}_c_${icomp[1]}_${iset[0]}_4_${iset[1]}
-		if [ -a $outfile ]
-		then
-		    echo "$outfile exists"
-		else
-		    python $pydeg_script $ref_gtf_sorted $idir_prev/${icomp[1]}${iDsuffix}.sam  $idir_prev/${icomp[0]}${iDsuffix}.sam \
-		           ${iset[0]} 4 ${iset[1]} $outfile
-		fi
-		
-		#Control comparison
-		echo "Oposite comparison with MF=iset[0] and SL=iset[1]"
-		outfile=$idir/t_${icomp[1]}_c_${icomp[0]}_${iset[0]}_4_${iset[1]}
-		if [ -a $outfile ]
-		then
-		    echo "$outfile exists"
-		else
-		    python $pydeg_script $ref_gtf_sorted $idir_prev/${icomp[0]}${iDsuffix}.sam  $idir_prev/${icomp[1]}${iDsuffix}.sam \
-		           ${iset[0]} 4 ${iset[1]} $outfile
-		fi
-	    done
-	done
+	#First comparison
+	echo "First comparison with MF=${iset[0]} and SL=${iset[1]}"
+	outfile=$idir/t_${icomp[0]}_c_${icomp[1]}_${iset[0]}_4_${iset[1]}
+	if [ -a $outfile ]
+	then
+	    echo "$outfile exists"
+	else
+	    python $pydeg_script $ref_gtf_sorted $idir_prev/${icomp[1]}${iDsuffix}.sam  $idir_prev/${icomp[0]}${iDsuffix}.sam \
+		   ${iset[0]} 4 ${iset[1]} $outfile
+	fi
+	
+	#Control comparison
+	echo "Oposite comparison with MF=iset[0] and SL=iset[1]"
+	outfile=$idir/t_${icomp[1]}_c_${icomp[0]}_${iset[0]}_4_${iset[1]}
+	if [ -a $outfile ]
+	then
+	    echo "$outfile exists"
+	else
+	    python $pydeg_script $ref_gtf_sorted $idir_prev/${icomp[0]}${iDsuffix}.sam  $idir_prev/${icomp[1]}${iDsuffix}.sam \
+		   ${iset[0]} 4 ${iset[1]} $outfile
+	fi
     done
 done
+
 
 set +u
 conda deactivate
 source activate $conda_env_main
 set -u
 
-## 11 - Convert sam to bam and create bam index
+## 08 - Convert sam to bam and create bam index
 echo "$stp - Convert sam to bam and create bam index"
 stp=$((stp+1))
-for iDsuffix in "${idirsuffix[@]}"
+
+idir_prev="04-sam_genomic_tophat"
+idir="04-bam_genomic_tophat"
+dir_exist $idir
+for isam in $(ls $idir_prev/*.sam)
 do
-    for imap in "${imapping[@]}"
-    do
-	idir_prev="04-sam_genomic_${imap}${iDsuffix}"
-	idir="04-bam_genomic_$imap${iDsuffix}"
-	dir_exist $idir
-	for isam in $(ls $idir_prev/*.sam)
-	do
-	    ifile=$(basename $isam)
-	    outfile=$idir/${ifile%.sam}.bam
-	    if [ ! -f $outfile ]
-	    then
-		samtools view -@ -S -b $idir_prev/$ifile > \
-			 $outfile
-		samtools index $outfile
-	    fi
-	done
-    done
+    ifile=$(basename $isam)
+    outfile=$idir/${ifile%.sam}.bam
+    if [ ! -f $outfile ]
+    then
+	samtools view -@ -S -b $idir_prev/$ifile > \
+		 $outfile
+	samtools index $outfile
+    fi
 done
 
-## 11 - Bam Quality check
+
+## 09 - Bam Quality check
 echo "$stp - Bam Quality check"
 stp=$((stp+1))
-for iDsuffix in "${idirsuffix[@]}"
-do
-    for imap in "${imapping[@]}"
-    do
-	
-	idir_prev="04-bam_genomic_${imap}${iDsuffix}"
-	idir="$QC_dir/04-bam_genomic_qualimap_$imap${iDsuffix}"
-	dir_exist $idir
 
-	for ibam in $(ls $idir_prev/*.bam)
-	do
-	    ifile=$(basename $ibam)
-	    out_dir=$idir/${ifile%.bam}
-	    if [ ! -d $out_dir ]
-	    then
-		qualimap bamqc -bam $idir_prev/$ifile  -gff $ref_gtf_sorted -outdir $out_dir
-	    fi
-	done
-    done
+idir_prev="04-bam_genomic_tophat"
+idir="$QC_dir/04-bam_genomic_qualimap_tophat"
+dir_exist $idir
+
+for ibam in $(ls $idir_prev/*.bam)
+do
+    ifile=$(basename $ibam)
+    out_dir=$idir/${ifile%.bam}
+    if [ ! -d $out_dir ]
+    then
+	qualimap bamqc -bam $idir_prev/$ifile  -gff $ref_gtf_sorted -outdir $out_dir
+    fi
 done
 
-## 12 - Move transcript alignment files (star)
-# echo "$stp - Move transcript alignment files (star)"
-# stp=$((stp+1))
-# idir_prev="04-sam_genomic_star_raw"
-# idir="06-bam_transcript_star"
-# dir_exist $idir
-# for ibam in $(ls $idir_prev | grep SRR.*Transcriptome)
-# do
-#     ifile=$(echo $ibam | sed 's/_.*$//')
-#     cp $idir_prev/$ibam $idir/${ifile}.bam
-#     samtools sort $idir/${ifile}.bam -o $idir/${ifile}.mapped_transcript.bam
-#     samtools index $idir/${ifile}.mapped_transcriptome.bam
-# done
 
-## 13 - Map filtered reads to transcript tophat
+## 10 - Map filtered reads to transcriptome tophat
 echo "$stp - Map filtered reads to transcript tophat"
 stp=$((stp+1))
 idir_prev="03-fastq_No-rRNA"
@@ -440,7 +296,7 @@ do
     fi
 done
 
-## 14 - Extract uniquely mapped [tophat]
+## 11 - Extract uniquely mapped [tophat]
 echo "$stp - Extract uniquely mapped [tophat]"
 stp=$((stp+1))
 idir_prev="06-sam_transcript_tophat"
@@ -458,11 +314,10 @@ do
 	# #Filter by XS: tag
 	samtools view -q 10 -G 4 -G 16\
 		 -h   $idir/${ifile%.sam}_sort.sam | grep  -v "XS:" > $outfile
-
     fi
 done
 
-## 15 - Convert sam to bam and create bam index [Tophat]
+## 12 - Convert sam to bam and create bam index [Tophat]
 echo "$stp - Convert sam to bam and create bam index [Tophat]"
 stp=$((stp+1))
 idir_prev="06-sam_transcript_tophat_sort"
@@ -480,221 +335,172 @@ do
     fi
 done
 
-## 16 - Map to transcriptome [star]
-echo "$stp - Map to transcriptome [star]"
-stp=$((stp+1))
-idir_prev="03-fastq_No-rRNA"
-idir="06-sam_transcript_star_raw"
-dir_exist $idir
-for ifastq in $(ls $idir_prev | grep fastq)
-do
-    ifile=$(basename $ifastq)
-    if [ ! -f $idir/${ifile}_Aligned.out.sam ]
-    then
-	STAR --runThreadN $cores --genomeDir $star_index_Tx \
-	     --sjdbGTFtagExonParentTranscript Parent \
-	     --alignIntronMin 25 --alignIntronMax 3000 \
-	     --outSAMtype SAM \
-	     --outSAMstrandField intronMotif \
-	     --outReadsUnmapped Fastx \
-	     --readFilesIn $idir_prev/$ifile \
-	     --outSAMmultNmax -1 --outMultimapperOrder Random \
-	     --outFilterMultimapNmax 1 --outFilterMismatchNmax 0 \
-	     --outFileNamePrefix $idir/${ifile}_ \
-	     --sjdbOverhang 50 --seedSearchStartLmax 30
-    fi
-done
 
-## 17 - Convert sam to bam and create bam index [star]
-echo "$stp - Convert sam to bam and create bam index [star]"
-stp=$((stp+1))
-idir_prev="06-sam_transcript_star_raw"
-idir="06-bam_transcript_star"
-dir_exist $idir
-for isam in $(ls $idir_prev | grep ".sam")
-do
-    ifile=$(basename $isam)
-    readarray -d . -t strarr <<< "$ifile"
-    ibase=${strarr[0]}
-    outfile=$idir/${ibase}.mapped_transcriptome.bam
-    if [ ! -f $outfile ]
-    then
-	echo "Generating $outfile"
-	# Sort sam files and move to another dir
-	samtools sort -@ $cores  $idir_prev/$ifile -O sam \
-		 -o $idir/${ifile%.sam}_sort.sam
-	
-	# Extract uniquely mapped
-	samtools view -q 10 -G 4 -G 16\
-		 -h   $idir/${ifile%.sam}_sort.sam | \
-	    grep  -v "XS:" > ${outfile%.bam}.sam
-
-	#Sort files
-	samtools sort  --threads $cores --output-fmt SAM -T sample.sort -o ${outfile%.bam}_sort.sam ${outfile%.bam}.sam
-	
-	# Convert to bam
-	samtools view -@ 8 -S -b ${outfile%.bam}_sort.sam > \
-		 $outfile
-
-	# Create index
-	samtools index $outfile
-    fi
-done
-
-## 18 - Bam Transcript Quality check #Fails for star
+## 13 - Bam Transcript Quality check
 echo "$stp - Bam Transcript Quality check"
 stp=$((stp+1))
-for imap in "${imapping[@]}"
-do
-    idir_prev="06-bam_transcript_$imap"
-    idir="$QC_dir/06-bam_transcript_qualimap_$imap"
-    dir_exist $idir
 
-    for ibam in $(ls $idir_prev | grep -E ".mapped_transcriptome.bam$")
-    do
-	if [ ! -f $idir/${ibam%.bam}/qualimapReport.html ]
-	then
-	    # ifile=$(basename $ibam)
-	    echo "Working on $ifile"
-	    qualimap bamqc -bam $idir_prev/$ibam  -outdir $idir/${ibam%.bam}
-	fi
-    done
+idir_prev="06-bam_transcript_$imap"
+idir="$QC_dir/06-bam_transcript_qualimap_$imap"
+dir_exist $idir
+
+for ibam in $(ls $idir_prev | grep -E ".mapped_transcriptome.bam$")
+do
+    if [ ! -f $idir/${ibam%.bam}/qualimapReport.html ]
+    then
+	# ifile=$(basename $ibam)
+	echo "Working on $ifile"
+	qualimap bamqc -bam $idir_prev/$ibam  -outdir $idir/${ibam%.bam}
+    fi
 done
 
-## 19 - Count mapped reads to features
-echo "$stp - Count mapped reads to features"
+
+## 14 - Count mapped reads to features
+echo "$stp - Count mapped reads to features [genome]"
 stp=$((stp+1))
 
-for iDsuffix in "${idirsuffix[@]}"
+idir_prev="04-bam_genomic_tophat"
+idir="07-htseq_genomic_tophat"
+# isuffix=
+dir_exist $idir
+for ibam in $(ls $idir_prev/*.bam)
 do
-    for imap in "${imapping[@]}"
-    do
-	idir_prev="04-bam_genomic_$imap${iDsuffix}"
-	idir="07-htseq_genomic_$imap${iDsuffix}"
-	# isuffix=
-	dir_exist $idir
-	for ibam in $(ls $idir_prev/*.bam)
-	do
-	    ifile=$(basename $ibam)
-	    outfile=$idir/${ifile%.bam}_representative_gene_models_HTSeq-exon.txt
-	    if [ ! -f $outfile ]
-	    then
-		nice htseq-count -f bam -s yes -t exon -i Parent -m intersection-strict -n $cores --additional-attr=exon_number $idir_prev/$ifile $ref_gff_representative > $idir/${ifile%.bam}_representative_gene_models_HTSeq-exon.txt &
-	    fi
-	done
-	Rscript ${script_dir}/R/A-GetSizeFactor.R -r ${output_dir_base} \
-		-d ${output_dirB}/${idir_prev}
-	
-    done
+    ifile=$(basename $ibam)
+    outfile=$idir/${ifile%.bam}_representative_gene_models_HTSeq-exon.txt
+    if [ ! -f $outfile ]
+    then
+	nice htseq-count -f bam -s yes -t exon -i Parent -m intersection-strict -n $cores \
+	     --additional-attr=exon_number $idir_prev/$ifile $ref_gff_representative \
+	     -c ${outfile}
+    fi
 done
+Rscript ${script_dir}/R/A-GetSizeFactor.R \
+	# -r ${output_dir_base} \
+	-r ${output_dir_base} \
+	-d ${output_dirB}/${idir_prev}
+	
+## 15 - Count mapped reads to features
+echo "$stp - Count mapped reads to features [transcript]"
+stp=$((stp+1))
 
-## 20 - Create 5 Wig track
+idir_prev="06-bam_transcript_tophat"
+idir="08-salmon_transcript_tophat"
+dir_exist $idir
+for ibam in $(ls $idir_prev/*.bam)
+do
+    ifile=$(basename $ibam)
+    outdir=$idir/${ifile%.bam}
+    if [ ! -f $outfile ]
+    then
+	salmon quant -p ${cores} -t ${At_transcript} -l U -a $idir_prev/$ifile -o ${outfile}
+	mv $outdir/quant.sf $idir/${ifile%.bam}.txt
+    fi
+done
+Rscript ${script_dir}/R/A-GetSizeFactor.R \
+	# -r ${output_dir_base} \
+	-r ${output_dir_base} \
+	-d ${output_dirB}/${idir}
+
+
+## 16 - Create 5 Wig track
 echo "$stp - Create 5' Wig track"
 stp=$((stp+1))
-for iDsuffix in "${idirsuffix[@]}"
+idir_prev="04-bam_genomic_tophat"
+size_factors="07-htseq_genomic_tophat/Size-factor.txt"
+idir="04-bigwig_genomic_tophat"
+dir_exist $idir
+for ibam in $(ls $idir_prev/*.bam)
 do
-    for imap in "${imapping[@]}"
-    do
+    ifile=$(basename $ibam)
+    isample=$(echo $ifile | sed 's/\..*$//g')
+    # Raw counts
+    outfile=$idir/${ifile%.bam}_r.bw
+    if [ ! -f $outfile ]
+    then
+	bamCoverage -p $cores -b $idir_prev/$ifile \
+                    -o ${outfile} \
+                    --binSize 1 --filterRNAstrand forward  \
+                    --Offset 1 --normalizeUsing None --scaleFactor '-1'
+    fi
 
-	idir_prev="04-bam_genomic_${imap}${iDsuffix}"
-	size_factors="07-htseq_genomic_$imap${iDsuffix}/Size-factor.txt"
-	idir="04-bigwig_genomic_${imap}${iDsuffix}"
-	dir_exist $idir
-	for ibam in $(ls $idir_prev/*.bam)
-	do
-	    ifile=$(basename $ibam)
-	    isample=$(echo $ifile | sed 's/\..*$//g')
-	    # Raw counts
-	    outfile=$idir/${ifile%.bam}_r.bw
-	    if [ ! -f $outfile ]
-	    then
-		bamCoverage -p $cores -b $idir_prev/$ifile \
-                            -o ${outfile} \
-                            --binSize 1 --filterRNAstrand forward  \
-                            --Offset 1 --normalizeUsing None --scaleFactor '-1'
-	    fi
+    outfile=$idir/${ifile%.bam}_f.bw
+    if [ ! -f $outfile ]
+    then
+	bamCoverage -p $cores -b $idir_prev/$ifile \
+                    -o $outfile \
+                    --binSize 1 --filterRNAstrand reverse  \
+                    --Offset 1 --normalizeUsing None --scaleFactor '1'
+    fi
+    
+    # Scale
+    # Read size factor
+    read size_factor < <(awk -v sample="${isample}" '{if ($1 ~ sample) {print $2}}' ${size_factors})
+    outfile=$idir/${ifile%.bam}_r_DESeq.bw 
+    if [ ! -f $outfile ]
+    then
+	bamCoverage -p $cores -b $idir_prev/$ifile \
+                    -o $outfile\
+                    --binSize 1 --filterRNAstrand forward  \
+                    --Offset 1 --normalizeUsing None --scaleFactor -${size_factor}
+    fi
 
-	    outfile=$idir/${ifile%.bam}_f.bw
-	    if [ ! -f $outfile ]
-	    then
-		bamCoverage -p $cores -b $idir_prev/$ifile \
-                            -o $outfile \
-                            --binSize 1 --filterRNAstrand reverse  \
-                            --Offset 1 --normalizeUsing None --scaleFactor '1'
-	    fi
-	    
-	    # Scale
-	    # Read size factor
-	    read size_factor < <(awk -v sample="${isample}" '{if ($1 ~ sample) {print $2}}' ${size_factors})
-	    outfile=$idir/${ifile%.bam}_r_DESeq.bw 
-	    if [ ! -f $outfile ]
-	    then
-		bamCoverage -p $cores -b $idir_prev/$ifile \
-                            -o $outfile\
-                            --binSize 1 --filterRNAstrand forward  \
-                            --Offset 1 --normalizeUsing None --scaleFactor -${size_factor}
-	    fi
-
-	    outfile=${ifile%.bam}_f_DESeq.bw
-	    if [ ! -f $outfile ]
-	    then
-		bamCoverage -p $cores -b $idir_prev/$ifile \
-                            -o $idir/$outfile \
-                            --binSize 1 --filterRNAstrand reverse  \
-                            --Offset 1 --normalizeUsing None --scaleFactor ${size_factor}
-	    fi
-	done
-    done
+    outfile=${ifile%.bam}_f_DESeq.bw
+    if [ ! -f $outfile ]
+    then
+	bamCoverage -p $cores -b $idir_prev/$ifile \
+                    -o $idir/$outfile \
+                    --binSize 1 --filterRNAstrand reverse  \
+                    --Offset 1 --normalizeUsing None --scaleFactor ${size_factor}
+    fi
 done
 
 
-## 21 - Create 5' Wig track transcript...
+
+## 16 - Create 5' Wig track transcript...
 echo "$stp - Create 5 Wig track transcript"
 stp=$((stp+1))
-for imap in "${imapping[@]}"
+
+
+idir_prev="06-bam_transcript_$imap"
+idir="06-bigwig_transcript_$imap"
+dir_exist $idir
+
+for ibam in $(ls $idir_prev/*)
 do
+    ifile=$(basename $ibam)
+    ## Raw counts
+    echo "\t- Raw counts"
+    if [ ! -f $idir/${ifile}_uni_r.bw ]
+    then
+	bamCoverage --numberOfProcessors $cores --bam $idir_prev/$ifile \
+		    --outFileName $idir/${ifile}_uni_r.bw \
+		    --binSize 1 --filterRNAstrand forward  \
+		    --Offset 1 --normalizeUsing None --scaleFactor '-1'
+    fi
+
+    if [ ! -f $idir/${ifile}_uni_f.bw ]
+    then
+	bamCoverage --numberOfProcessors $cores --bam $idir_prev/$ifile \
+		    --outFileName $idir/${ifile}_uni_f.bw \
+		    --binSize 1 --filterRNAstrand reverse  \
+		    --Offset 1 --normalizeUsing None --scaleFactor '1'
+    fi
+
+    ## Normalized CPM
+    echo "\t- Normalized CPM"
+    if [ ! -f $idir/${ifile}_uni_r_CPM.bw ]
+    then
+	bamCoverage --numberOfProcessors $cores --bam $idir_prev/$ifile \
+		    --outFileName $idir/${ifile}_uni_r_CPM.bw \
+		    --binSize 1 --filterRNAstrand forward  \
+		    --Offset 1 --normalizeUsing CPM --scaleFactor '-1'
+    fi
     
-    idir_prev="06-bam_transcript_$imap"
-    idir="06-bigwig_transcript_$imap"
-    dir_exist $idir
-
-    for ibam in $(ls $idir_prev/*)
-    do
-	ifile=$(basename $ibam)
-	## Raw counts
-	echo "\t- Raw counts"
-	if [ ! -f $idir/${ifile}_uni_r.bw ]
-	then
-	    bamCoverage --numberOfProcessors $cores --bam $idir_prev/$ifile \
-			--outFileName $idir/${ifile}_uni_r.bw \
-			--binSize 1 --filterRNAstrand forward  \
-			--Offset 1 --normalizeUsing None --scaleFactor '-1'
-	fi
-
-	if [ ! -f $idir/${ifile}_uni_f.bw ]
-	then
-	    bamCoverage --numberOfProcessors $cores --bam $idir_prev/$ifile \
-			--outFileName $idir/${ifile}_uni_f.bw \
-			--binSize 1 --filterRNAstrand reverse  \
-			--Offset 1 --normalizeUsing None --scaleFactor '1'
-	fi
-
-	## Normalized CPM
-	echo "\t- Normalized CPM"
-	if [ ! -f $idir/${ifile}_uni_r_CPM.bw ]
-	then
-	    bamCoverage --numberOfProcessors $cores --bam $idir_prev/$ifile \
-			--outFileName $idir/${ifile}_uni_r_CPM.bw \
-			--binSize 1 --filterRNAstrand forward  \
-			--Offset 1 --normalizeUsing CPM --scaleFactor '-1'
-	fi
-	
-	if [ ! -f $idir/${ifile}_uni_f_CPM.bw ]
-	then
-	    bamCoverage --numberOfProcessors $cores --bam $idir_prev/$ifile \
-			--outFileName $idir/${ifile}_uni_f_CPM.bw \
-			--binSize 1 --filterRNAstrand reverse  \
-			--Offset 1 --normalizeUsing CPM --scaleFactor '1'
-	fi
-    done
+    if [ ! -f $idir/${ifile}_uni_f_CPM.bw ]
+    then
+	bamCoverage --numberOfProcessors $cores --bam $idir_prev/$ifile \
+		    --outFileName $idir/${ifile}_uni_f_CPM.bw \
+		    --binSize 1 --filterRNAstrand reverse  \
+		    --Offset 1 --normalizeUsing CPM --scaleFactor '1'
+    fi
 done

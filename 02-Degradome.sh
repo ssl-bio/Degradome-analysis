@@ -3,7 +3,13 @@
 # Description: Wrapper to run R scripts
 
 # Import variables
-source Env_variables/Degradome_Oliver-2022.txt 
+ivars=Env_variables/Degradome_${1}.txt
+if [[ ! -f ${ivars} ]]
+then
+    /bin/bash Scripts/Aux/00-Variable_setup.sh ${1} Degradome_vars_mint.txt
+else
+    source ${ivars}
+fi
 
 # Activate environment
 source activate ${conda_env_main}
@@ -19,13 +25,13 @@ then
 fi
 
 echo "Running 01-Annotation-shared_peak_classification.R"
-Rscript ${script_dir}/R/01-Annotation-shared_peak_classification.R -d $dir
+# Rscript ${script_dir}/R/01-Annotation-shared_peak_classification.R -d $dir
 
 echo "Running 02-Filtering_Classification_Pooling.R"
-Rscript ${script_dir}/R/02-Filtering_Classification_Pooling.R -d $dir
+# Rscript ${script_dir}/R/02-Filtering_Classification_Pooling.R -d $dir
 
 echo "Running 03-Drawing_Dplots.R"
-# Rscript ${script_dir}/R/03-Drawing_Dplots.R -d $dir
+Rscript ${script_dir}/R/03-Drawing_Dplots.R -d $dir
 
 echo "Running 04-GetPeakSeq.R "
 # Rscript ${script_dir}/R/04-GetPeakSeq.R -d $dir
