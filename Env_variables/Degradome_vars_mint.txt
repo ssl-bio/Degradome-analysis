@@ -34,8 +34,9 @@ isamples=("${test_samples[@]}" "${control_samples[@]}")
 #-------------------------
 
 #Anaconda environments
-conda_env_main=ssl-bio
-conda_env_py2=ssl-bio-py2
+conda_pydeg_map=pydeg_map
+conda_pydeg_run=pydeg_run
+conda_pydeg_R=pydeg_R
 #-------------------------
 
 #pyDegradome

@@ -12,8 +12,10 @@ suppressPackageStartupMessages(library(optparse))
 ## Parse arguments
 option_list <- list(
     make_option(c("-d", "--wd"), type="character", default=NULL, 
-                help="Working directory", metavar="character")
-) 
+                help="Working directory", metavar="character"),
+    make_option(c("-b", "--base"), type="character", default=NULL, 
+                help="Project basename", metavar="character")
+)
 
 opt_parser <- OptionParser(option_list=option_list)
 opt <- parse_args(opt_parser)
@@ -21,14 +23,23 @@ opt <- parse_args(opt_parser)
 setwd(opt$wd)
 
 ## Import system variables
+ivarF="Initialization_variables.RData"
+ivarM=paste0("mininal_variables_", opt$base, ".RData")
+error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' providing the root directory and the project base name.\nAlternatively run '02-Degradome.sh' providing the project base name.\n"
                                         #Minimal variables
-load("Env_variables/mininal_variables.RData")
-
-ivars <- file.path(supp_data_dir,"R/Initialization_variables.RData")
-if(file.exists(ivars)) {
-    load(ivars)
+min_variables <- file.path("Env_variables", ivarM)
+if (file.exists(min_variables)) {
+    load(min_variables)
+    ivars <- file.path(supp_data_dir,"R/Initialization_variables.RData")
+    if(file.exists(ivars)) {
+        load(ivars)
+    } else {
+        cat(ivarF, error_msg)
+        break
+    }
 } else {
-    source("Scripts/R/00-Initialization.R")
+    cat(ivarM, error_msg)
+    break
 }
 ##-------------------------------------------------------------------------
 

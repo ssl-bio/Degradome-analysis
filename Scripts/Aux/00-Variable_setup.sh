@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Script to setup variables for bash and R scripts
-# Usage: /bin/bash Var_setting.sh Oliver-2022 Degradome_vars_mint.txt 
+# Usage: ./Scripts/Aux/00-Variable_setup.sh <Project_name> <Variable_specification_file> The last located in 'Env_variables'
+# Example: /bin/bash ./Scripts/Aux/00-Variable_setup.sh Zhang-2021 Zhang-2021_vars.txt
 #==================================================
 # Check the number of arguments
 if [[ -z $1 ]]
@@ -18,7 +19,7 @@ cd Env_variables
 
 VARS="`set -o posix ; set`"
 
-source Env_variables/${2}
+source ${2}
 echo "ibase=$ibase" > Degradome_${1}.txt
 grep -vFe "$VARS" <<<"$(set -o posix ; set)" |
     grep -v ^VARS= | grep -vE "^BASH|^SHLVL" |

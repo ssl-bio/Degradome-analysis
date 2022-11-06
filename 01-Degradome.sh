@@ -17,15 +17,10 @@ fi
 ivars=Env_variables/Degradome_${1}.txt
 if [[ ! -f ${ivars} ]]
 then
-    /bin/bash Scripts/Aux/00-Variable_setup.sh ${1} Degradome_vars_mint.txt
+    /bin/bash Scripts/Aux/00-Variable_setup.sh ${1} ${2}
 else
     source ${ivars}
 fi
-
-
-
-# conda_dir="$HOME/.local/bin/miniconda3"
-# conda_env_main_dir="$conda_dir/envs/$conda_env_main"
 
 ##Step counter
 stp=1
@@ -43,8 +38,10 @@ dir_exist () {
 qc_loop () {
     for ifastq in $(ls $1 | grep -v txt)
     do
-	# echo $ifastq
+	# Get destination file/folder
 	ifile=$(basename $ifastq)
+
+	# split filename by dot
 	readarray -d . -t strarr  < <(printf '%s' "$ifile")
 	iext=${strarr[-1]}
 
@@ -65,7 +62,7 @@ qc_loop () {
 
 #activate conda environment
 eval "$(conda shell.bash hook)"
-source activate $conda_env_main
+source activate ${conda_pydeg_map}
 
 #Abort if get any error
 set -eo pipefail
@@ -152,7 +149,7 @@ echo "$stp - Map to genome [tophat]"
 stp=$((stp+1))
 set +u
 conda deactivate
-source activate $conda_env_py2
+source activate ${conda_pydeg_run}
 set -u
 
 idir_prev="03-fastq_No-rRNA"
@@ -179,19 +176,12 @@ do
     fi
 done
 
-
-set +u
-conda deactivate
-source activate $conda_env_main
-set -u
-
-
 # 07 - PyDegradome
 echo "$stp - PyDegradome"
 stp=$((stp+1))
 set +u
 conda deactivate
-source activate $conda_env_py2
+source activate ${conda_pydeg_run}
 set -u
 
 idir_prev="04-sam_genomic_tophat"
@@ -231,7 +221,7 @@ done
 
 set +u
 conda deactivate
-source activate $conda_env_main
+source activate ${conda_pydeg_map}
 set -u
 
 ## 08 - Convert sam to bam and create bam index

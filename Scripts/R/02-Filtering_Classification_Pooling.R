@@ -17,8 +17,10 @@ suppressPackageStartupMessages(library(optparse))
 ## Parse arguments
 option_list <- list(
     make_option(c("-d", "--wd"), type="character", default=NULL, 
-                help="Working directory", metavar="character")
-) 
+                help="Working directory", metavar="character"),
+    make_option(c("-b", "--base"), type="character", default=NULL, 
+                help="Project basename", metavar="character")
+)
 
 opt_parser <- OptionParser(option_list=option_list)
 opt <- parse_args(opt_parser)
@@ -26,14 +28,23 @@ opt <- parse_args(opt_parser)
 setwd(opt$wd)
 
 ## Import system variables
+ivarF="Initialization_variables.RData"
+ivarM=paste0("mininal_variables_", opt$base, ".RData")
+error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' providing the root directory and the project base name.\nAlternatively run '02-Degradome.sh' providing the project base name.\n"
                                         #Minimal variables
-load("Env_variables/mininal_variables.RData")
-
-ivars <- file.path(supp_data_dir,"R/Initialization_variables.RData")
-if(file.exists(ivars)) {
-    load(ivars)
+min_variables <- file.path("Env_variables", ivarM)
+if (file.exists(min_variables)) {
+    load(min_variables)
+    ivars <- file.path(supp_data_dir,"R/Initialization_variables.RData")
+    if(file.exists(ivars)) {
+        load(ivars)
+    } else {
+        cat(ivarF, error_msg)
+        break
+    }
 } else {
-    source("Scripts/R/00-Initialization.R")
+    cat(ivarM, error_msg)
+    break
 }
 ##--------------------------------------------------
                                         # Load miRNA list
@@ -305,41 +316,52 @@ for(k in seq_along(comp_pair_list)) {
     }#Loop over test and negative control
 }
 ##Merge peak counts and export
-                                        #Total before and after filtering
-peak_counts_i.comp <- do.call(rbind,list.peak.counts)
-peak_counts_i.comp <- peak_counts_i.comp[with(peak_counts_i.comp,order(Settings)),]
 
-peak_counts_f <- file.path(summary_dir,"Peak_counts_BeforeAfter_Filtering")
-if (!is.null(peak_counts_i.comp) && nrow(peak_counts_i.comp) > 0 ) {
-    write.table(peak_counts_i.comp,
-                peak_counts_f, quote=FALSE,
-                sep="\t",row.names=FALSE)
-    cat("\t\tWrote ",basename(peak_counts_f),"\n")
-}
-                                        #Peaks per categories
-peak_counts_cat1_i.comp <- do.call(rbind,list.peak.cat1.counts)
-peak_counts_cat1_i.comp <- peak_counts_cat1_i.comp[with(peak_counts_cat1_i.comp,order(Settings)),]
+## Total before and after filtering
+out_file <- file.path(summary_dir,"Peak_counts_BeforeAfter_Filtering")
+if (!file.exists(out_file)) {
+    peak_counts_i.comp <- do.call(rbind,list.peak.counts)
+    peak_counts_i.comp <- peak_counts_i.comp[with(peak_counts_i.comp,order(Settings)),]
 
-peak_counts_cat1_f <- file.path(summary_dir,"Peak_counts_classification-1")
 
-if (!is.null(peak_counts_cat1_i.comp) && nrow(peak_counts_cat1_i.comp) > 0 ) {
-    write.table(peak_counts_cat1_i.comp,
-                peak_counts_cat1_f, quote=FALSE,
-                sep="\t",row.names=FALSE)
-    cat("\t\tWrote ",basename(peak_counts_cat1_f),"\n")
+    if (!is.null(peak_counts_i.comp) && nrow(peak_counts_i.comp) > 0 ) {
+        write.table(peak_counts_i.comp,
+                    out_file, quote=FALSE,
+                    sep="\t",row.names=FALSE)
+        cat("\t\tWrote ",basename(peak_counts_f),"\n")
+    }
 }
 
-                                        #Peaks per categories
-peak_counts_cat2_i.comp <- do.call(rbind,list.peak.cat2.counts)
-peak_counts_cat2_i.comp <- peak_counts_cat2_i.comp[with(peak_counts_cat2_i.comp,order(Settings)),]
+## Peaks per categories
+out_file <- file.path(summary_dir,"Peak_counts_classification-1")
+if (!file.exists(out_file)) {
+    peak_counts_cat1_i.comp <- do.call(rbind,list.peak.cat1.counts)
+    peak_counts_cat1_i.comp <- peak_counts_cat1_i.comp[with(peak_counts_cat1_i.comp,order(Settings)),]
 
-peak_counts_cat2_f <- file.path(summary_dir,"Peak_counts_classification-2")
 
-if (!is.null(peak_counts_cat2_i.comp) && nrow(peak_counts_cat2_i.comp) > 0 ) {
-    write.table(peak_counts_cat2_i.comp,
-                peak_counts_cat2_f, quote=FALSE,
-                sep="\t",row.names=FALSE)
-    cat("\t\tWrote ",basename(peak_counts_cat2_f),"\n")
+
+    if (!is.null(peak_counts_cat1_i.comp) && nrow(peak_counts_cat1_i.comp) > 0 ) {
+        write.table(peak_counts_cat1_i.comp,
+                    out_file, quote=FALSE,
+                    sep="\t",row.names=FALSE)
+        cat("\t\tWrote ",basename(peak_counts_cat1_f),"\n")
+    }
+}
+
+## Peaks per categories
+out_file <- file.path(summary_dir,"Peak_counts_classification-2")
+if (!file.exists(out_file)) {
+    peak_counts_cat2_i.comp <- do.call(rbind,list.peak.cat2.counts)
+    peak_counts_cat2_i.comp <- peak_counts_cat2_i.comp[with(peak_counts_cat2_i.comp,order(Settings)),]
+
+
+
+    if (!is.null(peak_counts_cat2_i.comp) && nrow(peak_counts_cat2_i.comp) > 0 ) {
+        write.table(peak_counts_cat2_i.comp,
+                    out_file, quote=FALSE,
+                    sep="\t",row.names=FALSE)
+        cat("\t\tWrote ",basename(peak_counts_cat2_f),"\n")
+    }
 }
 ##==================================================
 ## Pool all samples

@@ -22,7 +22,6 @@ opt <- parse_args(opt_parser)
 
 setwd(opt$wd)
 ## Path settings
-## here::i_am("Degradome_analysis-R/00-Initialization.R")
 env.raw <- read.table(here(paste0("Env_variables/Degradome_",opt$base,".txt")),
                       sep = "=", quote="")
 env.raw[,2] <- gsub('" "', '"\\, "', env.raw[,2])
@@ -438,4 +437,4 @@ save(list=ls(),
 ibase <- env["ibase"]
 supp_data_dir <- env["supp_data_dir"]
 save(list=c("ibase","supp_data_dir"),
-     file=file.path("Env_variables/mininal_variables.RData"))
+     file="Env_variables/mininal_variables_",opt$base,".RData")

@@ -372,6 +372,7 @@ miRtargetsWide <- dplyr::select(miRtargetsWide,c("Transcript",
                                                  "Comparison"))
 
 miRtargetsWide$miRNA <- gsub(",","<br/>",miRtargetsWide$miRNA)
+miRtargetsWide <- miRtargetsWide[with(miRtargetsWide, order(Comparison)),]
 miR.dt <- DT::datatable(miRtargetsWide,
                         escape = FALSE,
                       rownames = FALSE,
