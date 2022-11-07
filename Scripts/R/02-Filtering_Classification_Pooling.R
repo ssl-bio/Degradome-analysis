@@ -1,6 +1,16 @@
-## 02-Filtering-Classification_1.R
+## 02-Filtering_Classification_Pooling.R
 
-## Description: Filters the pydeg processed output by height of peak and classifies the resulting candidate peaks according to category 1 which is  based on whether the peak is shared between a pair of comparisons (test vs. control). whether the raio peak to noise is above a certain threshold and whether it is a known miRNA target. The latter matches the IDs to those in ftp://ftp.arabidopsis.org/Genes/Ath_miRNAs_Konika_Chawla_20120215.xls
+## Description: Filters the pydeg processed output (01-pyDegradome_processed/*/*_Processed) by height of peak and classifies the resulting candidate peaks in two steps:
+## Classification 1: Four categories. Based on whether the peak is found in two replicates (shared) and whether its signal to noise ratio is above certain threshold
+## Classification 2: Three categories. Calculates the mean peak signal in two test replicates and compares it to the mean of the highest noise signal in control replicates.
+
+## Output dir: output_02/02-pyDegradome_pooled
+## Output files:
+## -  Classification_<sample1_rep1>-<sample2_rep1>_and_<sample1_rep2>-<sample2_rep2>_<conf>_<win>_<mf>
+## -  <sample1_rep1>-<sample2_rep1>_<conf>_<win>_<mf>_Annotated
+## Pydegradome settings: conf: Confidence level; win: width of peak search window; mf: Multiplicative factor.
+
+## Example: output_02/01-pyDegradome_processed/SRR10759112-SRR10759114/SRR10759112-SRR10759114_0_95_4_4_Annotated
 
 ## Libraries
 suppressPackageStartupMessages(library(stringr))
@@ -28,8 +38,8 @@ opt <- parse_args(opt_parser)
 setwd(opt$wd)
 
 ## Import system variables
-ivarF="Initialization_variables.RData"
-ivarM=paste0("mininal_variables_", opt$base, ".RData")
+ivarF <- "Initialization_variables.RData"
+ivarM <- paste0("minimal_variables_", opt$base, ".RData")
 error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' providing the root directory and the project base name.\nAlternatively run '02-Degradome.sh' providing the project base name.\n"
                                         #Minimal variables
 min_variables <- file.path("Env_variables", ivarM)
@@ -328,7 +338,7 @@ if (!file.exists(out_file)) {
         write.table(peak_counts_i.comp,
                     out_file, quote=FALSE,
                     sep="\t",row.names=FALSE)
-        cat("\t\tWrote ",basename(peak_counts_f),"\n")
+        cat("\t\tWrote ",basename(out_file),"\n")
     }
 }
 
@@ -344,7 +354,7 @@ if (!file.exists(out_file)) {
         write.table(peak_counts_cat1_i.comp,
                     out_file, quote=FALSE,
                     sep="\t",row.names=FALSE)
-        cat("\t\tWrote ",basename(peak_counts_cat1_f),"\n")
+        cat("\t\tWrote ",basename(out_file),"\n")
     }
 }
 
@@ -360,7 +370,7 @@ if (!file.exists(out_file)) {
         write.table(peak_counts_cat2_i.comp,
                     out_file, quote=FALSE,
                     sep="\t",row.names=FALSE)
-        cat("\t\tWrote ",basename(peak_counts_cat2_f),"\n")
+        cat("\t\tWrote ",basename(out_file),"\n")
     }
 }
 ##==================================================

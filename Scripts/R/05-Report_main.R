@@ -26,8 +26,8 @@ opt <- parse_args(opt_parser)
 setwd(opt$wd)
 
 ## Import system variables
-ivarF="Initialization_variables.RData"
-ivarM=paste0("mininal_variables_", opt$base, ".RData")
+ivarF <- "Initialization_variables.RData"
+ivarM <- paste0("minimal_variables_", opt$base, ".RData")
 error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' providing the root directory and the project base name.\nAlternatively run '02-Degradome.sh' providing the project base name.\n"
                                         #Minimal variables
 min_variables <- file.path("Env_variables", ivarM)
@@ -49,7 +49,7 @@ for (i in seq_along(MF_list)) {
     i.MF <- MF_list[i]
     i.conf <- conf_list[i]
     i.conf_f <- gsub("\\.","_",i.conf)
-    my.input <- here("Scripts/R/05-Report.Rmd")
+    my.input <- here(paste0("Scripts/R/05-Report_",ibase,".Rmd"))
     out.name <- paste0("Top candidate Targets from Degradome Analysis MF-",i.MF,
                        "_Conf-",i.conf_f, "_",ibase,
                        ".html")

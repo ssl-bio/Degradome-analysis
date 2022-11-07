@@ -7,7 +7,7 @@
 cd ${1}
 
 # Import variables
-source Env_variables/Degradome_Oliver-2022.txt 
+source Env_variables/Degradome_${2}.txt 
 
 # Check output dir
 out_dir=${supp_data_dir}/miRNA_seq

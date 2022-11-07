@@ -14,9 +14,11 @@ option_list <- list(
     make_option(c("-r", "--rd"), type="character", default=NULL, 
                 help="Root directory", metavar="character"),
     make_option(c("-d", "--wd"), type="character", default=NULL, 
-                help="Destination directory", metavar="character")
-    ## make_option(c("-s", "--sd"), type="character", default=NULL, 
-    ##             help="Destination directory", metavar="character")
+                help="Destination directory", metavar="character"),
+    make_option(c("-b", "--base"), type="character", default=NULL, 
+                help="Project basename", metavar="character"),
+    make_option(c("-s", "--sd"), type="character", default=NULL, 
+                help="Script directory", metavar="character")
 ) 
 
 opt_parser <- OptionParser(option_list=option_list)
@@ -25,14 +27,24 @@ opt <- parse_args(opt_parser)
 setwd(opt$rd)
 out_file <- file.path(opt$wd,"Size-factor.txt")
 if (!file.exists(out_file)) {
+    ## Import system variables
+    ivarF <- "Initialization_variables.RData"
+    ivarM <- paste0("minimal_variables_", opt$base, ".RData")
+    error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' providing the root directory and the project base name.\nAlternatively run '02-Degradome.sh' providing the project base name.\n"
                                         #Minimal variables
-    load("Env_variables/mininal_variables.RData")
-
-    ivars <- file.path(supp_data_dir,"R/Initialization_variables.RData")
-    if(file.exists(ivars)) {
-        load(ivars)
+    min_variables <- file.path(opt$sd,"Env_variables", ivarM)
+    if (file.exists(min_variables)) {
+        load(min_variables)
+        ivars <- file.path(supp_data_dir,"R/Initialization_variables.RData")
+        if(file.exists(ivars)) {
+            load(ivars)
+        } else {
+            cat(ivarF, error_msg)
+            break
+        }
     } else {
-        source("Scripts/R/00-Initialization.R")
+        cat(ivarM, error_msg)
+        break
     }
 
     ## Merge counts
@@ -52,7 +64,7 @@ if (!file.exists(out_file)) {
             idf$ID <- gsub("transcript:", "", idf$ID)
         } else {
             idf <- read.table(file.path(opt$wd,ifile), header=TRUE)
-            icols=colnames(idf)[c(1,ncol(idf))]
+            icols <- colnames(idf)[c(1,ncol(idf))]
             idf <- dplyr::select(idf,all_of(icols))
             colnames(idf) <- c("ID","Count")
         }

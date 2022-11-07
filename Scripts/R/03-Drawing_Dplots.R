@@ -40,8 +40,8 @@ opt <- parse_args(opt_parser)
 setwd(opt$wd)
 
 ## Import system variables
-ivarF="Initialization_variables.RData"
-ivarM=paste0("mininal_variables_", opt$base, ".RData")
+ivarF <- "Initialization_variables.RData"
+ivarM <- paste0("minimal_variables_", opt$base, ".RData")
 error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' providing the root directory and the project base name.\nAlternatively run '02-Degradome.sh' providing the project base name.\n"
                                         #Minimal variables
 min_variables <- file.path("Env_variables", ivarM)
@@ -65,11 +65,11 @@ dg_bigwig_all <- list()
 for (i.sample in sample_list){
                                         #Load bigWig
     bigwig_f <- import(file.path(bigwig_dir,
-                                 paste0(i.sample,".mapped_genome_f_CPM.bw")))
+                                 paste0(i.sample,".mapped_genome_f_DESeq.bw")))
     strand(bigwig_f) <- "+"
 
     bigwig_r <- import(file.path(bigwig_dir,
-                                 paste0(i.sample,".mapped_genome_r_CPM.bw")))
+                                 paste0(i.sample,".mapped_genome_r_DESeq.bw")))
     strand(bigwig_r) <- "-"
 
     dg_bigwig_all[[i.sample]] <- c(bigwig_f,bigwig_r)
@@ -213,86 +213,111 @@ for (i in seq_along(MF_list)) {
                                          "GenomicRanges", "Cairo",
                                          "biomaRt", "Gviz")
 
-                        
-                        cl <- makeCluster(as.numeric(env$core))
-                        registerDoParallel(cl)
-                        foreach(#
-                            i.row = 1:np,
-                            .packages = export_pkgs,
-                            .errorhandling = "remove") %dopar% {
-                                tx.id <- gsub("\\.","_",df_plot[i.row, "tx_name"])
-                                ## Ploting transcript region
-                                tryCatch({
-                                    my.plot <- file.path(#
-                                        plot_subdir_gene,
-                                        paste0(paste(sprintf("%02d", i.row),"Gene",cat_label,tx.id,
-                                                     i.conf_f, "4", i.MF, sep = "_"),
-                                               ".pdf"))
-                                    if (!file.exists(my.plot)) {
-                                        CairoPDF(my.plot,
+                        ## Ploting transcript region
+                        my.gene.plots <- file.path(plot_subdir_gene,
+                                                   paste0(paste(sprintf("%02d", seq(1,nrow(df_plot))),
+                                                                "Gene",cat_label,
+                                                                gsub("\\.","_",df_plot$tx_name),
+                                                                i.conf_f, "4", i.MF, sep = "_"),
+                                                          ".pdf"))
+
+                        gene.sel <- !file.exists(my.gene.plots)
+
+                        if (sum(gene.sel) > 0) {
+                            df_plot$file <- my.gene.plots
+                            df_plot_gene <- df_plot[gene.sel,]
+                            cl <- makeCluster(as.numeric(env$core))
+                            registerDoParallel(cl)
+                            foreach(#
+                                i.row = seq_len(nrow(df_plot_gene)),
+                                .packages = export_pkgs,
+                                .errorhandling = "remove") %dopar% {
+                                    tx.id <- gsub("\\.","_",df_plot_gene[i.row, "tx_name"])
+                                    ## Ploting transcript region
+                                    tryCatch({
+                                        cairo_pdf(df_plot_gene$file[i.row],
                                                  width = 12,
-                                                 height = 8)
+                                                 height = 8,
+                                                 fallback_resolution = 600)
                                         drawDplot(#
-                                            p_chr = df_plot[i.row, "chr"],
-                                            tx_start = df_plot[i.row, "gene_region_start"],
-                                            tx_end = df_plot[i.row, "gene_region_end"],
-                                            peak_start = df_plot[i.row, "peak_start"], 
-                                            peak_end = df_plot[i.row, "peak_stop"],
-                                            tx_ID = df_plot[i.row, "tx_name"],
+                                            p_chr = df_plot_gene[i.row, "chr"],
+                                            tx_start = df_plot_gene[i.row, "gene_region_start"],
+                                            tx_end = df_plot_gene[i.row, "gene_region_end"],
+                                            peak_start = df_plot_gene[i.row, "peak_start"], 
+                                            peak_end = df_plot_gene[i.row, "peak_stop"],
+                                            tx_ID = df_plot_gene[i.row, "tx_name"],
                                             sample_list_plot = sample_list_degradome,
                                             p_test = i.pairs.test,
                                             p_ctrl = i.pairs.ctrl,
-                                            p_strand = df_plot[i.row, "strand"],
+                                            p_strand = df_plot_gene[i.row, "strand"],
                                             ylim = "strand", 
                                             p_bigwigs = bigwigs,
                                             p_mart = mart,
                                             p_colors = sample_color, 
                                             p_col_hl = col_hl,
                                             ticksn = 5,
-                                            i_factor=0.15,
-                                            p_width=NULL,
+                                            i_factor = 0.15,
+                                            p_width = NULL,
                                             p_size = 1.8,
-                                            ucscnames=FALSE,
-                                            plot_peak=FALSE,
-                                            p_font=i.font,
-                                            p_base_col=base_col)
+                                            ucscnames = FALSE,
+                                            plot_peak = FALSE,
+                                            p_font = i.font,
+                                            p_base_col = base_col)
                                         dev.off()
-                                    }#If there is no plot
-                                }
-                              , error = function(e) {
-                                  message(#
-                                      paste0(#
-                                          "plotBigWig failed to complete plotting for: chr=", 
-                                          df_plot[i.row, "chr"],
-                                          " gene_region_start=", gene_region_start, 
-                                          " gene_region_end=", gene_region_end,
-                                          " peak_start=", peak_start, 
-                                          " peak_end=", peak_end))
-                                  message(e)
-                              })#Try catch
+                                    }
+                                  , error = function(e) {
+                                      message(#
+                                          paste0(#
+                                              "plotBigWig failed to complete plotting for: chr=", 
+                                              df_plot_gene[i.row, "chr"],
+                                              " gene_region_start=", gene_region_start, 
+                                              " gene_region_end=", gene_region_end,
+                                              " peak_start=", peak_start, 
+                                              " peak_end=", peak_end))
+                                      message(e)
+                                  })#Try catch
+                                }#[Plot] For each
+                            stopCluster(cl)
+                            gc()
+                        }
 
-                                ## Ploting peak region
-                                tryCatch({
-                                    my.plot <- file.path(#
-                                        plot_subdir_peak,
-                                        paste0(paste(sprintf("%02d", i.row),"Peak",cat_label,tx.id,
-                                                     i.conf_f, "4", i.MF, sep = "_"),
-                                               ".pdf"))
-                                    if (!file.exists(my.plot)) {
-                                        CairoPDF(my.plot,
+                        ## Ploting peak region
+                        my.peak.plots <- file.path(plot_subdir_peak,
+                                                   paste0(paste(sprintf("%02d", seq(1,nrow(df_plot))),
+                                                                "Peak",cat_label,
+                                                                gsub("\\.","_",df_plot$tx_name),
+                                                                i.conf_f, "4", i.MF, sep = "_"),
+                                                          ".pdf"))
+
+                        peak.sel <- !file.exists(my.peak.plots)
+
+                        if (sum(peak.sel) > 0) {
+                            df_plot$file <- my.peak.plots
+                            df_plot_peak <- df_plot[peak.sel,]
+                            cl <- makeCluster(as.numeric(env$core))
+                            registerDoParallel(cl)
+                            foreach(#
+                                i.row = seq_len(nrow(df_plot_peak)),
+                                .packages = export_pkgs,
+                                .errorhandling = "remove") %dopar% {
+                                    tx.id <- gsub("\\.","_",df_plot_peak[i.row, "tx_name"])
+                                    ## Ploting peak region
+                                    tryCatch({
+                                        cairo_pdf(df_plot_peak$file[i.row],
                                                  width = 12,
-                                                 height = 8)
+                                                 height = 8,
+                                                 fallback_resolution = 600)
                                         drawDplot(#
-                                            p_chr = df_plot[i.row, "chr"],
-                                            tx_start = df_plot[i.row, "peak_start"],
-                                            tx_end = df_plot[i.row, "peak_stop"],
-                                            peak_start = df_plot[i.row, "peak_start"], 
-                                            peak_end = df_plot[i.row, "peak_stop"],
-                                            tx_ID = df_plot[i.row, "tx_name"],
+                                            p_chr = df_plot_peak[i.row, "chr"],
+                                            tx_start = df_plot_peak[i.row, "peak_start"],
+                                            tx_end = df_plot_peak[i.row, "peak_stop"],
+                                            peak_start = df_plot_peak[i.row, "peak_start"], 
+                                            peak_end = df_plot_peak[i.row, "peak_stop"],
+                                            tx_ID = df_plot_peak[i.row, "tx_name"],
                                             sample_list_plot = sample_list_degradome,
                                             p_test = i.pairs.test,
                                             p_ctrl = i.pairs.ctrl,
-                                            p_strand = df_plot[i.row, "strand"],
+                                            p_strand = df_plot_peak[i.row, "strand"],
                                             ylim = "strand", 
                                             p_bigwigs = bigwigs,
                                             p_mart = mart,
@@ -309,22 +334,23 @@ for (i in seq_along(MF_list)) {
                                             ref_genome_seq=At_genome_seq,
                                             ref_genome="TAIR10")
                                         dev.off()
-                                    }#If there is no plot
-                                }
-                              , error = function(e) {
-                                  message(#
-                                      paste0(#
-                                          "plotBigWig failed to complete plotting for: chr=", 
-                                          df_plot[i.row, "chr"],
-                                          " gene_region_start=", gene_region_start, 
-                                          " gene_region_end=", gene_region_end,
-                                          " peak_start=", peak_start, 
-                                          " peak_end=", peak_end))
-                                  message(e)
-                              })#Try catch
-                            }#[Plot] For each
-                        stopCluster(cl)
-                        gc()
+                                    }
+                                  , error = function(e) {
+                                      message(#
+                                          paste0(#
+                                              "plotBigWig failed to complete plotting for: chr=", 
+                                              df_plot_peak[i.row, "chr"],
+                                              " gene_region_start=", gene_region_start, 
+                                              " gene_region_end=", gene_region_end,
+                                              " peak_start=", peak_start, 
+                                              " peak_end=", peak_end))
+                                      message(e)
+                                  })#Try catch
+                                }#[Plot] For each
+                            stopCluster(cl)
+                            gc()
+                        }
+                        
                     }
                 }
             }# if isn't null pydeg_sub

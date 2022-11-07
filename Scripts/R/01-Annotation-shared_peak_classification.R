@@ -1,7 +1,20 @@
 ## 01-Annotation-shared_peak_classification.R
 
-## Description: Matches coordinates to gene information (Transcript, feature, coordinates); this using biomaRt search. On another Calculates signal to background noise for peaks; Finds shared peaks.
-## The above are performed in 3 for loops. A dictionary-like of reads is built to speed up computation (prevents reading bigwig files).
+## Description: Process PyDegradome results first by matching  coordinates to gene information (Transcript, feature, coordinates). Then, calculates peak signal to background ratio. Finally classifies peaks based on whethere they are found on both replicates (i.e. coordinates overlap). Main output file "Comparison_*"
+## The above are performed in 3 for loops. A dictionary-like of reads is built to speed up computation under different settings (prevents reading bigwig files).
+
+## Output dirs:
+## - output_02/01-pyDegradome_processed/<sample1_rep1>-<sample2_rep1>/
+## - output_02/02-pyDegradome_pooled/
+## Output files:
+## - <sample1_rep1>-<sample2_rep1>_<conf>_<win>_<mf>_Annotated
+## - <sample1_rep1>-<sample2_rep1>_<conf>_<win>_<mf>_Annotated
+## - Comparison_<sample1_rep1>-<sample2_rep1>_and_<sample1_rep2>-<sample2_rep2>_<conf>_<win>_<mf>
+## Pydegradome settings: conf: Confidence level; win: width of peak search window; mf: Multiplicative factor.
+
+## Examples:
+## - output_02/01-pyDegradome_processed/SRR10759112-SRR10759114/SRR10759112-SRR10759114_0_95_4_4_Annotated
+## - output_02/02-pyDegradome_pooled/Comparison_SRR10759112-SRR10759114_and_SRR10759113-SRR10759115_0_95_4_4
 
 ## Libraries
 suppressPackageStartupMessages(library(ChIPpeakAnno)) #For shared peak analysis.  toGRanges function 
@@ -31,8 +44,8 @@ opt <- parse_args(opt_parser)
 setwd(opt$wd)
 
 ## Import system variables
-ivarF="Initialization_variables.RData"
-ivarM=paste0("mininal_variables_", opt$base, ".RData")
+ivarF <- "Initialization_variables.RData"
+ivarM <- paste0("minimal_variables_", opt$base, ".RData")
 error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' providing the root directory and the project base name.\nAlternatively run '02-Degradome.sh' providing the project base name.\n"
                                         #Minimal variables
 min_variables <- file.path("Env_variables", ivarM)

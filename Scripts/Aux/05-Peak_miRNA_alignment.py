@@ -33,7 +33,15 @@ parser.add_argument(
     # default=Droot_dir,
     dest="root_dir",
     nargs="?",
-    help="Root directory of pdf files",
+    help="Root directory",
+)
+
+parser.add_argument(
+    "-bn",
+    "--basename",
+    dest="base_name",
+    nargs="?",
+    help="Name of the project",
 )
 
 args = parser.parse_args()
@@ -42,7 +50,7 @@ args = parser.parse_args()
 os.chdir(args.root_dir)
 
 # Import variables
-ifile = open("Env_variables/Degradome_Oliver-2022.txt", "r")
+ifile = open("Env_variables/Degradome_"+args.base_name+".txt", "r")
 ivars = defaultdict(str)
 for line in ifile:
     ivar = line.strip().split('=')

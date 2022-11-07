@@ -2,11 +2,11 @@
 suppressPackageStartupMessages(library(here))
 suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(filesstrings))
-## suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(biomaRt))
 suppressPackageStartupMessages(library(GenomicFeatures))
+suppressPackageStartupMessages(library(ensembldb))
 suppressPackageStartupMessages(library(optparse))
 
 ## Parse arguments
@@ -22,6 +22,7 @@ opt <- parse_args(opt_parser)
 
 setwd(opt$wd)
 ## Path settings
+
 env.raw <- read.table(here(paste0("Env_variables/Degradome_",opt$base,".txt")),
                       sep = "=", quote="")
 env.raw[,2] <- gsub('" "', '"\\, "', env.raw[,2])
@@ -437,4 +438,4 @@ save(list=ls(),
 ibase <- env["ibase"]
 supp_data_dir <- env["supp_data_dir"]
 save(list=c("ibase","supp_data_dir"),
-     file="Env_variables/mininal_variables_",opt$base,".RData")
+     file=paste0("Env_variables/minimal_variables_", ibase, ".RData"))

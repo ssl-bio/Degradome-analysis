@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Downloads genetic data: Annotation files, Genome files and creates a bowtie index for mapping
-# Usage: ./Scripts/Aux/00-Download-genetic-data.sh <Project_name> <Variable_specification_file> The last located in 'Env_variables'
+# Execution: ./Scripts/Aux/00-Download-genetic-data.sh <Project_name> <Variable_specification_file> The last located in 'Env_variables'
 # Example: /bin/bash ./Scripts/Aux/00-Download-genetic-data.sh Zhang-2021 Zhang-2021_vars.txt
 #==================================================
 # Import variables
