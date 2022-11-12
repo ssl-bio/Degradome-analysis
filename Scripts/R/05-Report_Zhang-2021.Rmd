@@ -24,7 +24,7 @@ knitr::read_chunk("05-Report_code.R")
 ```{r,summary,echo=FALSE}
 
 ```
-# Uninuclear pollen vs Mature pollen
+# WT vs miRNA775a-ox
 ### Classification results { - .tabset .tabset-pills}
 #### General classification {-}
 ```{r,general-classification,echo=FALSE}

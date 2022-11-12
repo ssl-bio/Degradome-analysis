@@ -11,78 +11,137 @@ from scipy import interpolate
 import numpy as np
 from thr_class import *
 import re
+import argparse
 
-# Default value for the total number of sites that could possibly be cut, based
-# on 1% of the human genome
-tot_sites = 32348300
-# tot_sites = 1500000
+# Defining external arguments
+parser = argparse.ArgumentParser(
+    prog='PyDegradome.py',
+    description='''
+Identifies coordinates in a test sample where the number of reads
+are significatively higher than those of the corresponding control sample.
+Library requirements: NumPy, SciPy
+Authors: Marta Gaglia (Tufts Univ.), Chris H. Rycroft (Harvard/LBL)
+''')
 
-# Error message to give if command-line arguments can't be correctly parsed
-def error_message():
-    stderr.write("PyDegradome: Unrecognized command-line options; type \"python PyDegradome.py -h\"\nfor more information.\n")
-    exit()
+parser.add_argument(
+    "-gtf",
+    "--gtf_genome",
+    dest="gtf",
+    required=True,
+    help="Genome annotation file",
+)
 
-  
-# Help message
-def help_message():
-    print "Syntax:\n" \
-        "python PyDegradome.py [options] <gtf file> <control .sam file> <test .sam file>\n" \
-        "       <confidence level> <window size> <multiplicative factor> <output file name>\n\n" \
-        "Options:\n" \
-        "  -h, --help        Show the syntax of the program and exit\n" \
-        "  -t <total sites>  Override the default value of total possible read sites"
-    exit()
+parser.add_argument(
+    "-ctrl",
+    "--sam_ctrl",
+    dest="sam_ctrl",
+    required=True,
+    help="Mapped file (sam) from control sample"
+)
 
+parser.add_argument(
+    "-test",
+    "--sam_test",
+    dest="sam_test",
+    required=True,
+    help="Mapped file (sam) from test sample"
+)
+
+parser.add_argument(
+    "-iconf",
+    "--conf_level",
+    dest="iconf",
+    required=True,
+    help="Confidence level (e.g. 0.95)"
+)
+
+parser.add_argument(
+    "-w",
+    "--window",
+    default=4,
+    dest="window",
+    help="window size (Integer, default 4) for merging reads"
+)
+
+parser.add_argument(
+    "-imf",
+    "--mult_factor",
+    dest="imf",
+    required=True,
+    help="Multiplicative factor (integer) to calculate significance threshold"
+)
+
+parser.add_argument(
+    "-t",
+    "--tot_sites",
+    dest="tot_sites",
+    default=32348300,
+    help="Estimate for the total number of sites that could possibly be cut\
+(1% of human genome)"
+)
+
+parser.add_argument(
+    "-o",
+    "--out_file",
+    dest="out_file",
+    required=True,
+    help="Output filename"
+)
+
+args = parser.parse_args()
 
 
 # Check if help requested
-if len(argv) > 1 and (argv[1] == "-h" or argv[1] == "--help"):
-    help_message()
+# if len(argv) > 1 and (argv[1] == "-h" or argv[1] == "--help"):
+#     help_message()
 
-# Check for enough command-line arguments
-if len(argv) < 8:
-    error_message()
+# # Check for enough command-line arguments
+# if len(argv) < 8:
+#     error_message()
 
-# Parse any options
-while len(argv) > 8:
-    cmd=argv.pop(1)
-    if cmd == "-h" or cmd == "--help":
-        help_message()
-    elif cmd == "-t":
-        if argv == 8:
-            error_message()
-            tot_sites=float(argv.pop(1))
-    else:
-        error_message()
+# # Parse any options
+# while len(argv) > 8:
+#     cmd=argv.pop(1)
+#     if cmd == "-h" or cmd == "--help":
+#         help_message()
+#     elif cmd == "-t":
+#         if argv == 8:
+#             error_message()
+#             tot_sites=float(argv.pop(1))
+#     else:
+#         error_message()
+
+# Default value for the total number of sites that could possibly be cut, based
+# on 1% of the human genome
+tot_sites = float(args.tot_sites)
 
 # Define class to store annotation, peaks indexed by chromosome
 class chromosomes:
-    def __init__(self,ID):
+    def __init__(self, ID):
         self.ID = ID
-        self.exonstart= [[],[]]
-        self.exonstop = [[],[]]
+        self.exonstart = [[], []]
+        self.exonstop = [[], []]
 
         # key = exon indentifier; value = list of reads (5') that map to that exon;
         # position in list: 0 = + strand, 1 = - strand
-        self.exoncov = [{},{}]
+        self.exoncov = [{}, {}]
 
         # key = exon indentifier, value = list of lists, one for each sample,
         # each as long as the exon length;
         # position in list: 0 = + strand, 1 = - strand
-        self.exon_l = [{},{}]
+        self.exon_l = [{}, {}]
 
         # key = exon indentifier, value = list of hit windows [start,stop];
         # position in list: 0 = + strand, 1 = - strand
-        self.hit = [{},{}]
+        self.hit = [{}, {}]
 
         # key = exon indentifier, value = list of hit windows [start,stop];
         # position in list: 0 = + strand, 1 = - strand
-        self.hitrefined = [{},{}] 
-        self.order = [[],[]]
+        self.hitrefined = [{}, {}]
+        self.order = [[], []]
 
-        
     # Collapses alternative exons into a big one
-    def add_exons(self,strand, start, stop): 
+    def add_exons(self, strand, start, stop):
         if strand == "+":
             ind = 0
         elif strand == "-":
@@ -92,7 +151,7 @@ class chromosomes:
                 print start, self.exonstart[ind][-1]
                 exit()
             if start < self.exonstop[ind][-1]:
-                if stop >  self.exonstop[ind][-1]:
+                if stop > self.exonstop[ind][-1]:
                     self.exonstop[ind][-1] = stop
             else:
                 self.exonstart[ind].append(start)
@@ -100,24 +159,27 @@ class chromosomes:
         else:
             self.exonstart[ind].append(start)
             self.exonstop[ind].append(stop)
-    def add_hit(self,s,ex_id,p1,p2):
-        if ex_id not in self.hit[s]:
-            self.hit[s][ex_id]=[]
-            self.hit[s][ex_id].append([p1,p2])
 
+    def add_hit(self, s, ex_id, p1, p2):
+        if ex_id not in self.hit[s]:
+            self.hit[s][ex_id] = []
+            self.hit[s][ex_id].append([p1, p2])
+
+           
 # Function to find which exon the aligned read comes from
-def find_exon(ex_start_list,ex_stop_list,n):
+def find_exon(ex_start_list, ex_stop_list, n):
     poss_ex = []
     # support for maintaining a list in sorted order
     # without having to sort the list after each insertion
-    a = bisect(ex_start_list,n) - 1
+    a = bisect(ex_start_list, n) - 1
     if a >= 0 and n <= ex_stop_list[a]:
         poss_ex.append(ex_start_list[a])
         poss_ex.append(ex_stop_list[a])
     return poss_ex
 
+
 # Adds to read count per exon and per position
-def add_cov(l,d1,d2,s,p):
+def add_cov(l, d1, d2, s, p):
     k = str(l[0])+"-"+str(l[1])
     d1[k][s] += 1
     p2 = p-l[0]
@@ -152,7 +214,7 @@ def parsecigar(cigarstring, pos_ref):
 # in each chromosome
 stderr.write("processing annotation:\n")
 
-gtf = open(argv[1], "r")
+gtf = open(args.gtf, "r")
 gd = {}
 
 for l in gtf:
@@ -172,12 +234,12 @@ for l in gtf:
 # a list to record the counts at each position
 for chrm in gd:
     stderr.write(chrm+"\n")
-    for ind in [0,1]:
+    for ind in [0, 1]:
         temp = gd[chrm].exonstart[ind]
         temp2 = gd[chrm].exonstop[ind]
         for x in range(len(temp)):
             k = str(temp[x])+"-"+str(temp2[x])
-            gd[chrm].exoncov[ind][k] = [0,0]
+            gd[chrm].exoncov[ind][k] = [0, 0]
             ex_len = temp2[x]-temp[x]+1
             gd[chrm].exon_l[ind][k] = []
             gd[chrm].exon_l[ind][k].append([0]*ex_len)
@@ -188,12 +250,12 @@ for chrm in gd:
 # falls
 stderr.write("\nprocessing control and test read files:\n")
 
-index_list = [argv[2], argv[3]] ## sets input file list
+index_list = [args.sam_ctrl, args.sam_test]  # sets input file list
 
-tcr = [0,0] ## records total # of aligned reads in input
-cr = [0,0] ## records total # of reads used in analysis
+tcr = [0, 0]  # records total # of aligned reads in input
+cr = [0, 0]  # records total # of reads used in analysis
 
-p=re.compile("^\d*M$")
+p = re.compile("^\d*M$")
 
 for s in range(len(index_list)):
     filename = index_list[s]
@@ -207,7 +269,7 @@ for s in range(len(index_list)):
             tcr[s] += 1
             icigar = sl[5]
             pos_ref = sl[3]
-            for fl in range(11,len(sl)):
+            for fl in range(11, len(sl)):
                 if sl[fl][0:2] == "XS":
                     XS = sl[fl]
 
@@ -217,10 +279,10 @@ for s in range(len(index_list)):
                 continue
 
             if int(sl[1]) & 16:
-                
+               
                 # Removes reads that mapped to strand complementary to the
                 # reference
-                if XS == "XS:A:-": 
+                if XS == "XS:A:-":
                     x = 1
                     if (p.search(icigar)):
                         pos = int(pos_ref) + len(sl[9]) - 1
@@ -228,18 +290,20 @@ for s in range(len(index_list)):
                         # int1 = sl[5].split("M")
                         # int2 = int1[1].split("N")
                         # pos = int(pos_ref) + int(int1[0]) + int(int2[0]) + int(int2[1]) - 1
-                        pos = parsecigar(icigar,pos_ref)
+                        pos = parsecigar(icigar, pos_ref)
             else:
                 # Removes reads that mapped to strand complementary to the
                 # reference
-                if XS == "XS:A:+": 
+                if XS == "XS:A:+":
                     x = 0
                     pos = int(pos_ref)
             chrm = sl[2]
             if pos != "not set":
-                poss_ex = find_exon(gd[chrm].exonstart[x],gd[chrm].exonstop[x],pos)
+                poss_ex = find_exon(gd[chrm].exonstart[x],
+                                    gd[chrm].exonstop[x], pos)
                 if len(poss_ex) != 0:
-                    add_cov(poss_ex,gd[chrm].exoncov[x],gd[chrm].exon_l[x],s,pos)
+                    add_cov(poss_ex, gd[chrm].exoncov[x],
+                            gd[chrm].exon_l[x], s, pos)
                     cr[s] += 1
 
 tcr_s = "total reads control: "+str(tcr[0])+"\ntotal reads test: "+str(tcr[1])+"\n"
@@ -252,18 +316,18 @@ stderr.write("\nparameters of prior distributions:\n")
 #
 # First generate a list where pos = read count, value = freq of that read count
 # 0 = control, 1 = test
-chd = [{},{}] 
+chd = [{},{}]
 
 # Scanning window size to integrate over
-w = int(argv[5]) 
+w = int(args.window)
 
 # Record the number of windows with specific read count as a dictionary with
 # key = read count, value = # of instances (one for test, and one for control
 # samples)
 for chrm in gd:
-    for x in [0,1]:
+    for x in [0, 1]:
         for ex in gd[chrm].exon_l[x]:
-            for z in [0,1]:
+            for z in [0, 1]:
                 temp_hl = gd[chrm].exon_l[x][ex][z]
                 for nt in range(0, len(temp_hl)-w+1):
                     w_hl = sum(temp_hl[nt:nt+w])
@@ -284,7 +348,7 @@ for x in [0, 1]:
 # Print a table of the list
 fn_l = ["ctl", "test"]
 for x in [0, 1]:
-    fn = argv[7] + "_" + fn_l[x] + "_heightfreq.txt"
+    fn = args.out_file + "_" + fn_l[x] + "_heightfreq.txt"
     fh = open(fn, "w")
     for y in range(len(chd_l[x])):
         nl = [str(y), str(chd_l[x][y])]
@@ -294,16 +358,16 @@ for x in [0, 1]:
 
 # Generate the threshold table using the lists above with the given input
 # confidence level (stored in argv[4])
-th=thresh_tab()
-th.fit_prior(chd_l,tot_sites)
-th.make_table(float(argv[4]))
-th.save_table(argv[7]+"_test.tab")
+th = thresh_tab()
+th.fit_prior(chd_l, tot_sites)
+th.make_table(float(args.iconf))
+th.save_table(args.out_file+"_test.tab")
 
 # Go through counts in exons, identify count in controls, test whether count in
 # test exceed the threshold by looking up the threshold in the generated table,
 # and record windows that passed
 count = 0
-co = float(argv[6])
+co = float(args.imf)
 
 stderr.write("finding peaks:\n")
 
@@ -318,12 +382,13 @@ for chrm in gd:
                 if gd[chrm].exoncov[x][ex][ds] > 10:
                     flag += 1
             if flag == 2:
-                ex_cov_ratio = float(gd[chrm].exoncov[x][ex][1])/float(gd[chrm].exoncov[x][ex][0])
+                ex_cov_ratio = float(gd[chrm].exoncov[x][ex][1])/float(gd[chrm].
+                                                                       exoncov[x][ex][0])
                 factor = co*ex_cov_ratio
 
                 # If the factor is larger 100, it will be artificially set to
                 # 100 and a warning message will be printed
-                if factor > 100: 
+                if factor > 100:
                     err_mess = "Ratio of " + str(factor) + " found, chrm "+ chrm+", exon "+ex
                     stderr.write(err_mess+"\n")
                     factor = 100
@@ -333,54 +398,55 @@ for chrm in gd:
                     w_t = sum(temp_t[nt:nt+w])
                     w_c = sum(temp_c[nt:nt+w])
                     if w_t != 0 or w_c != 0:
-                        stat = th.thr(w_c,factor)
+                        stat = th.thr(w_c, factor)
                         if w_t >= stat and max(temp_t[nt:nt+w]) > 1:
-                            gd[chrm].add_hit(x,ex,nt,nt+w)
+                            gd[chrm].add_hit(x, ex, nt, nt+w)
 
 # Trim windows so that 0 or 1 count positions are eliminated. For example,
 # [0,1,2,4,5] becomes [2,4,5].
 for c in gd:
-    for x in [0,1]:
+    for x in [0, 1]:
         for ex in gd[c].hit[x]:
             temp = gd[c].hit[x][ex]
             cov = gd[c].exon_l[x][ex][1]
             if len(temp) != 0:
-                for i in range(0,len(temp)):
+                for i in range(0, len(temp)):
                     a = cov[temp[i][0]:temp[i][1]]
                     c1 = 0
                     c2 = 0
-                    for j in range(0,len(a)):
+                    for j in range(0, len(a)):
                         if a[j] < 2:
                             c1 += 1
                         else:
                             break
-                    for j in range(len(a) - 1,-1,-1):
+                    for j in range(len(a) - 1, -1, -1):
                         if a[j] < 2:
                             c2 += 1
                         else:
                             break
-                    gd[c].hit[x][ex][i]=[temp[i][0]+c1,temp[i][1]-c2]
+                    gd[c].hit[x][ex][i] = [temp[i][0]+c1, temp[i][1]-c2]
 
 # Merge windows into bigger peaks
 for c in gd:
-    for x in [0,1]:
+    for x in [0, 1]:
         for ex in gd[c].hit[x]:
             temp_hit = gd[c].hit[x][ex]
             if len(temp_hit) != 0:
                 prev_h = temp_hit[0][0]
                 temp_start = [prev_h]
                 temp_end = []
-                for i in range(1,len(temp_hit)):
+                for i in range(1, len(temp_hit)):
                     next_h = temp_hit[i][0]
                     if next_h > prev_h+10:
                         temp_start.append(next_h)
                         temp_end.append(temp_hit[i-1][1])
                     prev_h = next_h
                 temp_end.append(temp_hit[-1][1])
-                for j in range(0,len(temp_start)):
+                for j in range(0, len(temp_start)):
                     if ex not in gd[c].hitrefined[x]:
                         gd[c].hitrefined[x][ex] = []
-                    gd[c].hitrefined[x][ex].append([temp_start[j],temp_end[j]])
+                    gd[c].hitrefined[x][ex].append([temp_start[j],
+                                                    temp_end[j]])
 
 # Construct main output file
 #
@@ -399,16 +465,16 @@ for c in gd:
 # control and test dataset.
 
 # Open file and print header line
-outf = open(argv[7],"w")
+outf = open(args.out_file, "w")
 outf.write("#chr\tstrand\tpeak_start\tpeak_stop\tmax_peak_test\tratio\tfactor\tmax_count_test\tmax_count_ctl\ttot_count_test\ttot_count_ctl\n")
 
 chrm_list = gd.keys()
 chrm_list.sort()
 
-strand_l = ["+","-"]
+strand_l = ["+", "-"]
 
 for c in chrm_list:
-    for x in [0,1]:
+    for x in [0, 1]:
         order = gd[c].hitrefined[x].keys()
         order.sort()
         for ex in order:
@@ -432,10 +498,13 @@ for c in chrm_list:
                     tot_c = sum(control)
                     ratio = float(gd[c].exoncov[x][ex][1])/float(gd[c].exoncov[x][ex][0])
                     factor = ratio*co
-                    new_line = [c, strand, str(start), str(end), str(peak), str(ratio), str(factor), str(maxtest), str(maxcontrol),str(tot_t),str(tot_c)]
+                    new_line = [c, strand, str(start), str(end),
+                                str(peak), str(ratio), str(factor),
+                                str(maxtest), str(maxcontrol),
+                                str(tot_t), str(tot_c)]
                     nlj2 = "\t".join(new_line)
                     outf.write(nlj2+"\n")
-                    if h[0]-10 > 0 :
+                    if h[0]-10 > 0:
                         outf.write(str(cov_c[h[0]-10:h[1]+10])+"\n")
                         outf.write(str(cov_t[h[0]-10:h[1]+10])+"\n")
                     else:

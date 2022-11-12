@@ -21,6 +21,9 @@ dir_exist () {
     fi
 }
 
+##Step counter
+stp=1
+
 # Create directories
 directory_list=("Annotation" "Compressed" "Fasta" "Index" "Others")
 for idir in ${directory_list[@]}
@@ -33,41 +36,64 @@ done
 download_dir=${genetic_data_dir}/Compressed
 dest_dir=${genetic_data_dir}/Annotation
 
-file_base=Arabidopsis_thaliana.TAIR10.55
+file_base=${Sp_base}${ver}
 formats=("gtf" "gff3")
 for iformat in ${formats[@]}
 do
-    wget http://ftp.ensemblgenomes.org/pub/current/plants/${iformat}/arabidopsis_thaliana/${file_base}.${iformat}.gz -O ${download_dir}/${file_base}.${iformat}.gz
-
-    gzip -dk < ${download_dir}/${file_base}.${iformat}.gz > ${dest_dir}/${file_base}.${iformat}
+    dl_file=${download_dir}/${file_base}.${iformat}.gz
+    outfile=${dest_dir}/${file_base}.${iformat}
+    if [ ! -f ${dl_file} ] && [ ! -f ${outfile} ]
+    then
+	echo "$stp - Get annotation for genome"
+	stp=$((stp+1))
+	wget http://ftp.ensemblgenomes.org/pub/current/plants/${iformat}/${sp}/${file_base}.${iformat}.gz -O ${dl_file}
+	gzip -dk < ${download_dir}/${file_base}.${iformat}.gz > ${outfile}
+    fi
 done
 
 #miRNA
-wget https://www.mirbase.org/ftp/CURRENT/genomes/ath.gff3 -O ${dest_dir}/ath.gff3
+miRNAsp_list=organisms.txt.gz
+if [ ! -f ${dest_dir}/${miRNAsp_list%.gz} ]
+then
+    echo "$stp - Download list of organisms from www.mirbase.org"
+    wget https://www.mirbase.org/ftp/CURRENT/${miRNAsp_list} -O ${download_dir}/${miRNAsp_list}
+    gzip -dk < ${download_dir}/${miRNAsp_list} > ${dest_dir}/${miRNAsp_list%.gz}
+fi
+
+outfile=${dest_dir}/${miRNAsp}.gff3
+if [ ! -f ${outfile} ]
+then
+    echo "$stp - Download miRNA sequences from www.mirbase.org"
+    stp=$((stp+1))
+    iSp=$(echo $sp | sed 's/_/ /' | sed -e 's/^./\U&\E/g')
+    read miRNAsp < <(awk -v sp="$iSp" 'BEGIN {FS="\t"} ; {if ($3 ~ sp) {print $1}}' ${dest_dir}/${miRNAsp_list%.gz})
+    ifile=$(basename ${outfile})
+    wget https://www.mirbase.org/ftp/CURRENT/genomes/${ifile} -O ${outfile}
+fi
+echo "ref_miRNA==$outfile" >> Degradome_${1}.txt
+
 
 #Fasta files
 download_dir=${genetic_data_dir}/Compressed
 dest_dir=${genetic_data_dir}/Fasta
 
-fasta_list=(Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz\
-       Arabidopsis_thaliana.TAIR10.cdna.all.fa.gz\
-       Arabidopsis_thaliana.TAIR10.ncrna.fa.gz)
+# List should match the names in 
+fasta_list=("${Sp_base}.dna.toplevel.fa.gz"\
+       "${Sp_base}.cdna.all.fa.gz"\
+       "${Sp_base}.ncrna.fa.gz")
 type_list=(dna cdna ncrna)
-
+outpath_list=("${At_genome}" "${At_transcript}" "${At_ncRNA}")
 
 END=$((${#fasta_list[@]}-1))
 for i in $(seq 0 $END)
 do
-    wget http://ftp.ensemblgenomes.org/pub/plants/current/fasta/arabidopsis_thaliana/${type_list[i]}/${fasta_list[i]} -O ${download_dir}/${fasta_list[i]}
-    ifile=${fasta_list[i]%.gz}
-    gzip -dk < ${download_dir}/${fasta_list[i]} > ${dest_dir}/${ifile}
+    dl_file=${download_dir}/${fasta_list[i]}
+    if [ ! -f ${dl_file} ] || [ ! -f ${outpath_list[i]} ]
+    then
+	echo "$stp - Download sequence files: genome, cDNA, ncRNA"
+	stp=$((stp+1))
+	wget http://ftp.ensemblgenomes.org/pub/plants/current/fasta/${sp}/${type_list[i]}/${fasta_list[i]} -O ${dl_file}
+	gzip -dk < ${download_dir}/${fasta_list[i]} > ${outpath_list[i]}
+    fi
 done
 
-# Others (miRNA target list)
-download_dir=${genetic_data_dir}/Compressed
-dest_dir=${genetic_data_dir}/Others
-wget ftp://ftp.arabidopsis.org/Genes/Ath_miRNAs_Konika_Chawla_20120215.xls -O ${dest_dir}/Ath_miRNAs_Konika_Chawla_20120215.xls
-
-#Extract sheet as csv
-# ssconvert -S -O 'sheet=MIR_TARGETS' ${dest_dir}/Ath_miRNAs_Konika_Chawla_20120215.xls ${dest_dir}/%s.csv
-# mv ${dest_dir}/MIR_TARGETS.csv ${dest_dir}/Ath_miRNAs_Konika_Chawla_20120215.csv

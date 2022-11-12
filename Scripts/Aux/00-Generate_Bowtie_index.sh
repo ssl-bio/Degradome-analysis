@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 # Generates bowtie indices for mapping to genome, transcript and to remove ribosomal RNA
@@ -31,20 +32,21 @@ set -eo pipefail
 
 index_dir=${genetic_data_dir}/Index
 fasta_dir=${genetic_data_dir}/Fasta
-fasta_list=(Arabidopsis_thaliana.TAIR10.dna.toplevel.fa\
-       Arabidopsis_thaliana.TAIR10.cdna.all.fa
-       Arabidopsis_thaliana.TAIR10.ncrna.fa)
-type_list=(At_gDNA At_cDNA At_rRNA)
+fasta_list=("${At_genome}" \
+		"${At_transcript}" \
+		"${At_ncRNA}")
+index_path_list=(${bowtie_index_genome} ${bowtie_index_Tx} ${bowtie_index_ncRNA})
 
 END=$((${#fasta_list[@]}-1))
 for i in $(seq 0 $END)
 do
-    ifasta=${fasta_list[i]}
-    bowtie_dir="Bowtie_index_${type_list[i]}"
+    # ifasta=${fasta_list[i]}
+    bowtie_dir=$(basename ${index_path_list[i]})
     if [ ! -d ${index_dir}/${bowtie_dir} ]
     then
-	mkdir -p ${index_dir}/${bowtie_dir}
-	bowtie2-build ${fasta_dir}/${ifasta} ${index_dir}/${bowtie_dir}/${bowtie_dir}
+	dir_exist ${index_dir}/${bowtie_dir}
+	bowtie2-build ${fasta_list[i]} ${index_path_list[i]}
+	cp ${At_genome} ${index_dir}/${bowtie_dir}/${bowtie_dir}.fa
+	wait
     fi
-    # mv $bowtie_dir ../Index
 done

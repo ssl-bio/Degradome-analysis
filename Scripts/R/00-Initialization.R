@@ -50,12 +50,36 @@ if(!is.element("cores",names(env))) {
 }
 
 ## Input path
-#Degradome BigWig
-bam_dir <- file.path(env["output_dirB"], "04-bam_genomic_tophat")
-bam_tr_dir <- file.path(env["output_dirB"], "06-bam_transcript_tophat")
-bigwig_dir <- file.path(env["output_dirB"],"04-bigwig_genomic_tophat")
-pydeg_dir <- file.path(env["output_dirB"],"05-pyDegradome_tophat")
-htseq_dir <- file.path(env["output_dirB"], "07-htseq_genomic_tophat")
+                                        # output_1 list directories
+idirs <- list.dirs(env$output_dirB,
+                   recursive =FALSE,
+                   full.names=FALSE)
+
+                                        # assign selected directories
+input_df <- data.frame(ivars=c("bam_dir", "bam_tr_dir",
+                               "bigwig_dir", "bigwig_dir", "pydeg_dir",
+                               "htseq_dir"),
+                       ikeys=c("bam_genomic", "bam_transcript",
+                               "bigwig_genomic", "bigwig_chromosome","pyDegradome",
+                               "htseq_genomic"))
+
+for (i in seq_len(nrow(input_df))) {
+  ivar <- input_df[i,1]
+  ikey <- input_df[i,2]
+  isel <- grepl(ikey,idirs)
+  if(sum(isel)==1) {
+      assign(ivar,
+         file.path(env["output_dirB"],
+                        idirs[isel]))
+  }
+}
+
+
+## bam_dir <- file.path(env["output_dirB"], "04-bam_genomic")
+## bam_tr_dir <- file.path(env["output_dirB"], "06-bam_transcript")
+## bigwig_dir <- file.path(env["output_dirB"],"04-bigwig_genomic")
+## pydeg_dir <- file.path(env["output_dirB"],"05-pyDegradome")
+## htseq_dir <- file.path(env["output_dirB"], "07-htseq_genomic")
 
 
 ## Output path
@@ -71,10 +95,10 @@ pydeg_reads_dir <- file.path(env["supp_data_dir"],"Degradome_reads")
 pydeg_np_dir <- file.path(env["supp_data_dir"],"pyDegradome_NonPeaks_coordinates")
 
 ## Max peak reads 
-maxP_dir <- file.path(env["supp_data_dir"], "pyDegradome_maxPeak_CPM")
+maxP_dir <- file.path(env["supp_data_dir"], "pyDegradome_maxPeak_Scaled")
 
 ## Max transcript reads
-maxR_dir <- file.path(env["supp_data_dir"], "pyDegradome_maxTx_CPM")
+maxR_dir <- file.path(env["supp_data_dir"], "pyDegradome_maxTx_Scaled")
 
 ## Root dir to store degradome plots
 pydeg_dplot_dir <- file.path(report_dir, "Dplots")
@@ -264,16 +288,16 @@ if (!file.exists(txdb_f)) {
 }
 
 ## Import and process miRNA target database
-mirna_f <- file.path(Rvarious_dir,"miRNA")
-if (!file.exists(mirna_f)) {
-    mirna <- read.csv(env$mirna_list)
-                                        #Get first record with priority by the evidences.
-    mirna$target_type <- factor(mirna$target_type, levels = c("VALIDATED", "PREDICTED", "predicted"))
-    mirna <- mirna[order(mirna$target_type),]
-    mirna <- mirna[!duplicated(mirna$target_acc),]
-    data.table::setnames(mirna,"target_acc","ID")
-    saveRDS(mirna,mirna_f)
-}
+## mirna_f <- file.path(Rvarious_dir,"miRNA")
+## if (!file.exists(mirna_f)) {
+##     mirna <- read.csv(env$mirna_list)
+##                                         #Get first record with priority by the evidences.
+##     mirna$target_type <- factor(mirna$target_type, levels = c("VALIDATED", "PREDICTED", "predicted"))
+##     mirna <- mirna[order(mirna$target_type),]
+##     mirna <- mirna[!duplicated(mirna$target_acc),]
+##     data.table::setnames(mirna,"target_acc","ID")
+##     saveRDS(mirna,mirna_f)
+## }
 
 ## Generate a sqlite database
 ensemblDB_file <- file.path(Rvarious_dir,
@@ -285,11 +309,6 @@ if (!file.exists(ensemblDB_file)) {
     DB <- ensemblDB_file
 }
 
-
-## Variables
-## At_genome_file <- basename(env[["At_genome"]])
-## At_transcript_path <- env[["At_transcript"]]
-## ref_gtf <- env[["ref_gtf"]]
 
 #Columns to round up
 cols2round <- c("max_non_peak_ratio", "max_non_peak_ratio_2", "max.peak.cpm", "max.read.tx.cpm", "ratioPTx")

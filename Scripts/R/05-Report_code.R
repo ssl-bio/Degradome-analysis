@@ -134,7 +134,7 @@ for (i.comparison in levels(pydeg_all$comparison)) {
                                         # Convert discrete columns to factors
             pydeg_cat$category_1 <- factor(pydeg_cat$category_1, levels= c(1:4,0))
             pydeg_cat$category_2 <- factor(pydeg_cat$category_2, levels= c(LETTERS[1:3]))
-            pydeg_cat[,":="(miRNA=ifelse(miRNA==0,"No","Yes"))]
+            ## pydeg_cat[,":="(miRNA=ifelse(miRNA==0,"No","Yes"))]
             pydeg_cat[,":="(MorePeaks=ifelse(MorePeaks==0,"No","Yes"))]
             pydeg_cat[,":="(rep_gene=ifelse(rep_gene==0,"No","Yes"))]
             pydeg_cat$comparison <- i.comp

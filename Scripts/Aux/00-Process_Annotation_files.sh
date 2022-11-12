@@ -28,20 +28,18 @@ source activate ${conda_pydeg_map}
 #Abort if get any error
 set -eo pipefail
 
-# cd ${genetic_data_dir}/Annotation
-# idir=$(pwd)
-# echo $idir
-out_file=${ref_gtf%.gtf}_sorted_awk.gtf
-if [ ! -a ${out_file} ]
+if [ ! -a ${ref_gtf_sorted} ]
 then
+    echo "Sorting annotation (gtf) file"
     awk '/^[^#]/ {print $0}' ${ref_gtf} | \
 	awk '{if ($3 != "gene") print $0}' | \
 	awk '{if ($3 != "transcript") print $0}' | \
-	sort -k1,1 -k4,4n -k5,5n > ${out_file}
+	sort -k1,1 -k4,4n -k5,5n > ${ref_gtf_sorted}
 fi
 
-out_file=${ref_gff%.gff3}_repr.gff3
-if [ ! -a ${out_file} ]
+if [ ! -a $ref_gff_rep} ]
 then
-    agat_sp_keep_longest_isoform.pl --gff ${ref_gff} -o ${out_file}
+    echo "Generating annotation file (gff3) of representative (longest) isoforms"
+    agat_sp_keep_longest_isoform.pl --gff ${ref_gff} -o ${ref_gff_rep}
+    mv ${base_dir}/*.agat.log ${base_dir}/Genetic_data/Annotation/
 fi

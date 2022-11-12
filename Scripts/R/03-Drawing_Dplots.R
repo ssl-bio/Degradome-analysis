@@ -65,11 +65,11 @@ dg_bigwig_all <- list()
 for (i.sample in sample_list){
                                         #Load bigWig
     bigwig_f <- import(file.path(bigwig_dir,
-                                 paste0(i.sample,".mapped_genome_f_DESeq.bw")))
+                                 paste0(i.sample,"_G_f_DESeq.bw")))
     strand(bigwig_f) <- "+"
 
     bigwig_r <- import(file.path(bigwig_dir,
-                                 paste0(i.sample,".mapped_genome_r_DESeq.bw")))
+                                 paste0(i.sample,"_G_r_DESeq.bw")))
     strand(bigwig_r) <- "-"
 
     dg_bigwig_all[[i.sample]] <- c(bigwig_f,bigwig_r)

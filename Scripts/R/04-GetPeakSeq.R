@@ -54,16 +54,16 @@ for (i in seq_along(MF_list)) {
     i.conf <- conf_list[i]
     i.conf_f <- gsub("\\.","_",i.conf)
 
-                                        #Check if file exists
-    pydeg_input_f <- file.path(pydeg_pooled_dir,paste("Pooled",
-                                                      i.conf_f, "4", i.MF, sep="_"))
-    if (file.exists(pydeg_input_f)) {
-        ## df.f <- paste(i.comp,i.conf,"4",i.MF,"Motifs_category_1", sep = "_")
-        fasta.f <- paste0(paste("PeakRegioncDNA_category_1",i.conf_f,"4",i.MF,
+    ## Define input and output files
+    input_file <- file.path(pydeg_pooled_dir,paste("Pooled",
+                                                   i.conf_f, "4", i.MF, sep="_"))
+    out_file <- paste0(paste("PeakRegioncDNA_category_1",i.conf_f,"4",i.MF,
                                 sep = "_"),".fa")
+    if(!file.exists(out_file) && file.exists(input_file)) {
         
-                                        #Read pydeg input file
-        pydeg_all <- fread(pydeg_input_f)
+        
+        ## Read pydeg input file
+        pydeg_all <- fread(input_file)
         sel <- pydeg_all$category_1=="1" & pydeg_all$category_2=="A"
         pydeg_sub <- pydeg_all[sel,]
         pydeg_sub$indx <- paste0(pydeg_sub$tx_name,
@@ -117,10 +117,6 @@ for (i in seq_along(MF_list)) {
             idf_sub$TxP_end <- i.end
             idf_sub$Pseq <- as.character(i.seq)
             idf_sub$indx <- paste0(idf_sub$tx_id,idf_sub$seq_start,idf_sub$seq_end)
-            ## idf <- data.frame(tx_name=itx,
-            ##                   TxP_start=i.start,
-            ##                   TxP_end=i.end,
-            ##                   Pseq=i.seq)
             seq.df <- rbind(seq.df,idf_sub)
         }
         seq.df <- unique(seq.df)
@@ -145,7 +141,7 @@ for (i in seq_along(MF_list)) {
         mcols(gr.tmp)$sequence <- Pseq
 
         write2FASTA(gr.tmp,
-                    file = file.path(peakSeq_dir,fasta.f),
+                    file = file.path(peakSeq_dir,out_file),
                     width = 50)
         detach(pydeg_sub)
     }

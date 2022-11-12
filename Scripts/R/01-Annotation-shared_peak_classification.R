@@ -81,11 +81,11 @@ df.gmodel$tx_name <- toupper(df.gmodel$tx_name)
 
 dg_bigwig_all <- list()
 for (i.sample in sample_list) {
-                                        #Load bigWig
-    bigwig_f <- import(file.path(bigwig_dir,paste0(i.sample,".mapped_genome_f.bw")))
+                                        #Load bigWig [genome]
+    bigwig_f <- import(file.path(bigwig_dir,paste0(i.sample,"_G_f.bw")))
     strand(bigwig_f) <- "+"
 
-    bigwig_r <- import(file.path(bigwig_dir,paste0(i.sample,".mapped_genome_r.bw")))
+    bigwig_r <- import(file.path(bigwig_dir,paste0(i.sample,"_G_r.bw")))
     strand(bigwig_r) <- "-"
 
     dg_bigwig_all[[i.sample]] <- c(bigwig_f,bigwig_r)

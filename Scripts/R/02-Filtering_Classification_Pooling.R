@@ -58,16 +58,16 @@ if (file.exists(min_variables)) {
 }
 ##--------------------------------------------------
                                         # Load miRNA list
-mirna <- readRDS(file.path(env["supp_data_dir"],"R/miRNA"))            
+## mirna <- readRDS(file.path(env["supp_data_dir"],"R/miRNA"))            
 
                                         # Degradome BigWig
 dg_bigwig_all <- list()
 for (i.sample in sample_list) {
                                         #Load bigWig
-    bigwig_f <- import(file.path(bigwig_dir,paste0(i.sample,".mapped_genome_f_DESeq.bw")))
+    bigwig_f <- import(file.path(bigwig_dir,paste0(i.sample,"_G_f_DESeq.bw")))
     strand(bigwig_f) <- "+"
 
-    bigwig_r <- import(file.path(bigwig_dir,paste0(i.sample,".mapped_genome_r_DESeq.bw")))
+    bigwig_r <- import(file.path(bigwig_dir,paste0(i.sample,"_G_r_DESeq.bw")))
     strand(bigwig_r) <- "-"
 
     dg_bigwig_all[[i.sample]] <- c(bigwig_f,bigwig_r)
@@ -155,11 +155,11 @@ for(k in seq_along(comp_pair_list)) {
 
                                         #------------------------------
                                         #Add miRNA info
-                    sel  <- pydeg2$ID %in% mirna$ID
+                    ## sel  <- pydeg2$ID %in% mirna$ID
 
-                    pydeg2$miRNA <- 0
+                    ## pydeg2$miRNA <- 0
 
-                    pydeg2[sel,miRNA := 1]
+                    ## pydeg2[sel,miRNA := 1]
                                         #------------------------------
                     cat("Classification 2")
                     i.samples <- unlist(strsplit(gsub("_and_","-",i.comp_f),
