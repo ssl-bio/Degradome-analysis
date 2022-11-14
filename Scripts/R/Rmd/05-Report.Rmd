@@ -1,5 +1,5 @@
 ---
-title: "Degradome classification results unicellular and mature pollen"
+title: "`r params$doc_title`"
 output: 
   bookdown::html_document2:
     fig_caption : true
@@ -11,11 +11,11 @@ output:
 params:
   i.MF : 4
   i.conf : 0.95
-  # working.dir: here("../../")
-  output.dir: here("../../output/Report/")  
+  doc_title : "Degradome analysis report"
+  output.dir: here("../../../output/Report/")  
 ---
 ``` {r, include=FALSE, cache=FALSE,echo=TRUE}
-knitr::read_chunk("05-Report_code.R")
+knitr::read_chunk("../05-Report_code.R")
 ```
 ```{r,setup,echo=FALSE}
 ## cat(getwd(),"\n")
@@ -24,22 +24,21 @@ knitr::read_chunk("05-Report_code.R")
 ```{r,summary,echo=FALSE}
 
 ```
-# Uninuclear pollen vs Mature pollen
+# List of candidate peaks per comparison
 ### Classification results { - .tabset .tabset-pills}
 #### General classification {-}
 ```{r,general-classification,echo=FALSE}
 
 ``` 
-#### Classification 1 (Metrics) {-} 
-```{r,classification1-metrics,echo=FALSE} 
+#### Classification (Metrics) {-} 
+```{r,classification-metrics,echo=FALSE} 
 
 ``` 
-#### Classification 2 (Coordinates) {-} 
-```{r,classification2-coordinates,echo=FALSE} 
+#### Coordinates {-} 
+```{r,coordinates,echo=FALSE} 
 
 ``` 
 # Putative miRNA targets 
 ```{r,summary-miRtargets,echo=FALSE} 
 ``` 
-# References 
 

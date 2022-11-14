@@ -89,9 +89,6 @@ txdb <- loadDb(file.path(env["supp_data_dir"],"R/txdb_object"))
                                         # Transcript range
 tr_range <- GenomicFeatures::transcripts(txdb)
 ##--------------------------------------------------
-##Allow for arbitrary chromosome identifiers
-## options(ucscChromosomeNames=FALSE)
-
 
 for (i in seq_along(MF_list)) {
     i.MF <- MF_list[i]
@@ -150,10 +147,6 @@ for (i in seq_along(MF_list)) {
                                         #match samples to colors
                 names(sample_color) <- sample_list_degradome
                 ##-----------------------------------
-                
-                ##reorder columns
-                ## pydeg_sub <- dplyr::select(pydeg_sub,all_of(i.cols.sort))
-
                 ## Loop over all combinations of categories
                 i.cat1 <- factor(pydeg_sub$category_1,levels=c(1:4,0))
                 i.cat2 <- as.factor(pydeg_sub$category_2)

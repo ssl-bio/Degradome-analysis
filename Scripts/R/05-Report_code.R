@@ -15,12 +15,11 @@ icon_size <- "25px"
 pydeg_input_f <- file.path(pydeg_pooled_dir,
                            paste("Pooled",
                                  i.conf_f, "4", i.MF, sep="_"))
-cols.gen <- c(i.cols.export[1:6],i.cols.export[24],"PARE",
-              i.cols.export[7:11],"TAIR",i.cols.export[12:13])
+cols.gen <- c(i.cols.export[1:6],i.cols.export[23],"PARE",
+              i.cols.export[7:10],"TAIR",i.cols.export[11:12])
 cols.metrics <- c(i.cols.export[1:3],
-                  i.cols.export[c(14:22,13)])
-cols.coordinates <- c(i.cols.export[1:3],
-                      i.cols.export[c(25:33,13)])								 
+                  i.cols.export[c(13:21,12)])
+cols.coordinates <- c(i.cols.export[1:3],                      i.cols.export[c(24:32,12)])
 								 
 
                                         # Import data
@@ -113,7 +112,7 @@ for (i.comparison in levels(pydeg_all$comparison)) {
                                    fill = "steelblue"),
                                 "</a>")
 
-                                        # Plot links
+            ## Plot links
             G.dplot.link <- paste0(dplot.prefix,
                                  gene_plot_location,">",
                                  fa("chart-area", width=icon_size, height=icon_size,
@@ -131,10 +130,9 @@ for (i.comparison in levels(pydeg_all$comparison)) {
             pydeg_cat$Gene_plot <- G.dplot.link
             pydeg_cat$Peak_plot <- P.dplot.link
 
-                                        # Convert discrete columns to factors
+            ## Convert discrete columns to factors
             pydeg_cat$category_1 <- factor(pydeg_cat$category_1, levels= c(1:4,0))
             pydeg_cat$category_2 <- factor(pydeg_cat$category_2, levels= c(LETTERS[1:3]))
-            ## pydeg_cat[,":="(miRNA=ifelse(miRNA==0,"No","Yes"))]
             pydeg_cat[,":="(MorePeaks=ifelse(MorePeaks==0,"No","Yes"))]
             pydeg_cat[,":="(rep_gene=ifelse(rep_gene==0,"No","Yes"))]
             pydeg_cat$comparison <- i.comp
@@ -150,6 +148,8 @@ pydeg_dt <- do.call(rbind,pydeg_dt_list)
 pydeg_dt <- dplyr::select(pydeg_dt,
               all_of(c(i.cols.sort[1:3],"TAIR",i.cols.sort[4:11],"PARE",
                        i.cols.sort[12:length(i.cols.sort)])))
+
+## Change column name for html report
 setnames(pydeg_dt,i.cols.sort, i.cols.export)					   
 
 ## ---- summary ----
@@ -189,9 +189,10 @@ sum.df$MF <- mfs
 sum.df$conf <- confs
 sum.df$Comparison <- i.comparisons
 
-## Order and remove columns
+## Order and remove column, 'Settings'
 sum.df2 <- sum.df[,c(6,8,9,1:5)]
 
+##Change column names for html report
 colnames(sum.df2) <- c("Comparison",
                        "Mult.<br/>Factor",
                       "Conf.<br/>level",
@@ -258,14 +259,14 @@ i.dt <- DT::datatable(dplyr::select(pydeg_dt,all_of(cols.gen)),
                           scroller = TRUE,
                           fixedColumns = list(leftColumns = 3, rightColumns = 1),
                           columnDefs = list(list(visible=FALSE, targets="Comparison")),
-                          rowGroup = list(dataSrc = 15),
+                          rowGroup = list(dataSrc = 14),
                           dom = 'Bfrtip',
                           buttons = c('copy', 'csv', 'excel'),
                           pageLength = 150
                       )
                       ) %>%
     formatStyle(
-    c("miRNA","Peaks 2>"),
+    c("Peaks 2>"),
     color = styleEqual(
       c("No","Yes"), c("black", "Crimson")
     )) %>%
@@ -278,7 +279,7 @@ i.dt <- DT::datatable(dplyr::select(pydeg_dt,all_of(cols.gen)),
     formatRound(cols2round[5], 2)
 i.dt
 
-## ---- classification1-metrics ----
+## ---- classification-metrics ----
 
 i.dt2 <- DT::datatable(dplyr::select(pydeg_dt,all_of(cols.metrics)),
                        escape = FALSE,
@@ -300,7 +301,7 @@ i.dt2 <- DT::datatable(dplyr::select(pydeg_dt,all_of(cols.metrics)),
     formatRound(cols2round[1:4], 2)
 i.dt2
 
-## ---- classification2-coordinates ----
+## ---- coordinates ----
 i.dt3 <- DT::datatable(dplyr::select(pydeg_dt,all_of(cols.coordinates)),
                        escape = FALSE,
                        rownames = FALSE,
@@ -323,72 +324,95 @@ i.dt3
 ## ---- summary-miRtargets ----
 ifile <- paste0("miRNA_targets_MF-", i.MF, "_iConf-", i.conf_f, ".txt")
 mirFile <- file.path(summary_dir, ifile)
-miRtargets <- read.table(mirFile, comment.char ="#", header=FALSE)
-miRtargets <- within(miRtargets, {
-  ID <- ave(V1, V1, FUN=seq_along)
-})
-miRtargetsWide <- reshape(miRtargets, direction  = "wide", idvar="ID", timevar="V1")
-colnames(miRtargetsWide) <- c("ID", "Transcript", "Comparison", "miRNA")
-miRtargetsWide <- miRtargetsWide[with(miRtargetsWide,
-                                          order(Comparison,
-                                                Transcript,
-                                                miRNA)),]
-miRtargetsWide <- as.data.frame(miRtargetsWide %>% group_by_at(vars(Transcript,Comparison)) %>%
-  summarize_all(paste, collapse=","))
 
-## Format comparison column
-i.comparisons <- NULL
-for (i in seq_len(nrow(miRtargetsWide))) {
-    ## Format comparison
-    i.comparison <- miRtargetsWide$Comparison[i]
-    i.samples <- unlist(strsplit(gsub("_and_","-",i.comparison),
-                                 split="-"))
-    i.samples2 <- NULL
-    for (j in i.samples) {
-        i.sel <-  sample_list %in% j
-        names(j) <- names(sample_list)[i.sel]
-        i.samples2 <- c(i.samples2,j)
-        i.comp <- mergeVector(i.samples2)
+if (file.exists(mirFile)) {
+    miRtargets <- tryCatch(read.table(mirFile, comment.char ="#", header=FALSE),
+                           error = function(e) {
+                               message(#
+                                  cat("Peak sequences did not aligned with known miRNA species"))
+                               message(e)
+                           })
+    
+    if (class(miRtargets)=="data.frame") {
+        miRtargets <- within(miRtargets, {
+            ID <- ave(V1, V1, FUN=seq_along)
+        })
+        miRtargetsWide <- reshape(miRtargets, direction  = "wide", idvar="ID", timevar="V1")
+        colnames(miRtargetsWide) <- c("ID", "Transcript", "Comparison", "miRNA")
+        miRtargetsWide <- miRtargetsWide[with(miRtargetsWide,
+                                              order(Comparison,
+                                                    Transcript)),]
+        miRtargetsWide <- as.data.frame(miRtargetsWide %>% group_by_at(vars(Transcript,Comparison)) %>%
+                                        summarize_all(paste, collapse=","))
+
+        ## Format comparison column
+        i.comparisons <- NULL
+        for (i in seq_len(nrow(miRtargetsWide))) {
+            ## Format comparison
+            i.comparison <- miRtargetsWide$Comparison[i]
+            i.samples <- unlist(strsplit(gsub("_and_","-",i.comparison),
+                                         split="-"))
+            i.samples2 <- NULL
+            for (j in i.samples) {
+                i.sel <-  sample_list %in% j
+                names(j) <- names(sample_list)[i.sel]
+                i.samples2 <- c(i.samples2,j)
+                i.comp <- mergeVector(i.samples2)
+            }
+            i.comp <- mergeVector(ivec=i.samples2, sep2 = " AND <br/>", single=TRUE)
+            i.comparisons <- c(i.comparisons,i.comp)
+        }
+        miRtargetsWide$Comparison <- i.comparisons
+
+        ## Merge link to peak plot
+        miRtargetsWide$indx <- paste0(miRtargetsWide$Transcript, miRtargetsWide$Comparison)
+        cols_sub <- c("Transcript",
+                      "Gene\nplot",
+                      "Peak\nplot",
+                      "Peak(T):Max(C)",
+                      "Feature",
+                      "Gene name",
+                      "Description", 
+                      "Comparison")
+        pydeg_dt_sub <- dplyr::select(pydeg_dt, all_of(cols_sub))
+        pydeg_dt_sub$indx <- paste0(pydeg_dt_sub$Transcript, pydeg_dt_sub$Comparison)
+        miRtargetsWide <- merge(dplyr::select(miRtargetsWide,c("miRNA","indx" )),
+                                pydeg_dt_sub,
+                                by = "indx", all.x = TRUE)[,-1]
+
+        ## Select columns for output
+        miRtargetsWide <- dplyr::select(miRtargetsWide,c("Transcript",
+                                                         "miRNA",
+                                                         cols_sub[2:8]))
+
+        ## miRtargetsWide$miRNA <- gsub(",","<br/>",miRtargetsWide$miRNA)
+        miRtargetsWide <- miRtargetsWide[with(miRtargetsWide, order(Comparison)),]
+        miR.dt <- DT::datatable(miRtargetsWide,
+                                escape = FALSE,
+                                rownames = FALSE,
+                                width="100%",
+                                ## height = "10px",
+                                ## filter = "top",
+                                extensions = c("FixedColumns","Buttons","RowGroup"),
+                                options = list(
+                                    scrollX = TRUE,
+                                    ## scrollY = "500px",
+                                    ## scroller = TRUE,
+                                    fixedColumns = list(leftColumns = 1, rightColumns = 1),
+                                    columnDefs = list(list(visible=FALSE, targets="Comparison")),
+                                    rowGroup = list(dataSrc = ncol(miRtargetsWide)-1),
+                                    dom = 'Brtip',
+                                    buttons = c('copy', 'csv', 'excel'),
+                                    pageLength = 150
+                                )) %>%
+            formatStyle(
+                "Feature",
+                background = styleEqual(
+                    c("3UTR","CDS","5UTR"), c("#90ee901a", "#f080801a", "#add8e61a")
+                )
+            ) %>%
+            formatRound(cols2round[5], 2)
+        miR.dt 
     }
-    i.comp <- mergeVector(ivec=i.samples2, sep2 = " AND <br/>", single=TRUE)
-    i.comparisons <- c(i.comparisons,i.comp)
 }
 
-## Add new columns
-miRtargetsWide$Comparison <- i.comparisons
-
-## Merge link to peak plot
-miRtargetsWide$indx <- paste0(miRtargetsWide$Transcript, miRtargetsWide$Comparison)
-pydeg_dt_sub <- dplyr::select(pydeg_dt,c("Transcript","Peak\nplot","Comparison"))
-pydeg_dt_sub$indx <- paste0(pydeg_dt_sub$Transcript, pydeg_dt_sub$Comparison)
-miRtargetsWide <- merge(miRtargetsWide,
-                        dplyr::select(pydeg_dt_sub,c("Peak\nplot","indx")),
-                        by = "indx", all.x = TRUE)
-
-## Select columns for output
-miRtargetsWide <- dplyr::select(miRtargetsWide,c("Transcript",
-                                                 "miRNA",
-                                                 "Peak\nplot",
-                                                 "Comparison"))
-
-miRtargetsWide$miRNA <- gsub(",","<br/>",miRtargetsWide$miRNA)
-miRtargetsWide <- miRtargetsWide[with(miRtargetsWide, order(Comparison)),]
-miR.dt <- DT::datatable(miRtargetsWide,
-                        escape = FALSE,
-                      rownames = FALSE,
-                      width="100%",
-                      ## height = "10px",
-                      ## filter = "top",
-                      extensions = c("FixedColumns","Buttons","RowGroup"),
-                      options = list(
-                          scrollX = TRUE,
-                          ## scrollY = "500px",
-                          ## scroller = TRUE,
-                          fixedColumns = list(leftColumns = 1, rightColumns = 1),
-                          columnDefs = list(list(visible=FALSE, targets="Comparison")),
-                          rowGroup = list(dataSrc = 3),
-                          dom = 'Brtip',
-                          buttons = c('copy', 'csv', 'excel'),
-                          pageLength = 150
-                      ))
-miR.dt 

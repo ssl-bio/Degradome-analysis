@@ -2,15 +2,15 @@
 #!/bin/bash
 
 # Generates bowtie indices for mapping to genome, transcript and to remove ribosomal RNA
-# Usage: ./Scripts/Aux/00-Generate_Bowtie_index.sh <Project_name> <Variable_specification_file> The last located in 'Env_variables'
-# Example: /bin/bash ./Scripts/Aux/00-Generate_Bowtie_index.sh Zhang-2021 Zhang-2021_vars.txt
+# Usage: ./Scripts/sh_py/00-Generate_Bowtie_index.sh <Project_name> <Variable_specification_file> The last located in 'Env_variables'
+# Example: /bin/bash ./Scripts/sh_py/00-Generate_Bowtie_index.sh Zhang-2021 Zhang-2021_vars.txt
 #==================================================
 
 # Import variables
 ivars=Env_variables/Degradome_${1}.txt
 if [[ ! -f ${ivars} ]]
 then
-    /bin/bash Scripts/Aux/00-Variable_setup.sh ${1} ${2}
+    /bin/bash Scripts/sh_py/00-Variable_setup.sh ${1} ${2}
 else
     source ${ivars}
 fi

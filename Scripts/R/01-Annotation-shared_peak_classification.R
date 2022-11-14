@@ -70,7 +70,7 @@ txdb <- loadDb(file.path(env["supp_data_dir"],"R/txdb_object"))
 annoData.gmodel <- toGRanges(txdb, feature = c("geneModel"))
 df.gmodel <- data.frame(annoData.gmodel)
 
-q                                        # Change columns 2,3 names to match function argument
+                                        # Change columns 2,3 names to match function argument
 colnames(df.gmodel) <- c("seqnames","feature_start",
                          "feature_end","width","strand",
                          "tx_name","feature_type")
@@ -471,7 +471,7 @@ for (i in seq_along(MF_list)) {
 ## Generate shared peak dataset
 ## For peaks found in only one sample, it calculates the reads (on the missing sample) using the same coordinates .
 ## These are latter treated as a peak, though technically no significant difference was found by pyDegradome
-cat("* Generate shared peak dataset\n")
+cat("* Generate shared peak table\n")
 peak_num_df <- data.frame() #Stacked tables of peak width
 for (i in seq_along(MF_list)) {
     i.MF <- MF_list[i]
@@ -757,4 +757,3 @@ for (i in seq_along(MF_list)) {
 peak_num_df <- unique(peak_num_df)
 write.table(peak_num_df,file.path(summary_dir,"Annotated_peak_number"),
             sep="\t", row.names=FALSE, quote=FALSE )
-## }#Loop over comp_list__sub

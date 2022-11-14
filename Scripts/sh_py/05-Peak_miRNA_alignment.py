@@ -18,8 +18,14 @@ def getAlignIndx(seq1, seq2, index, threshold, matrix):
       returns the  alingment score. Sequence two is complemented"""
     atX = seq1
     mirXc = seq2[index].seq.reverse_complement()  # set2
-    i_score = pairwise2.align.localds(atX, mirXc, matrix, open=-10,
-                                      extend=-2, score_only=True)
+    len_diff = len(atX)-len(mirXc)
+    if (len_diff % 2 == 1):
+        offset = ((len_diff-1)/2) - 1
+    else:
+        offset = ((len_diff)/2) - 1
+
+    offset = int(offset)
+    i_score = pairwise2.align.globalds(atX[offset:], mirXc, matrix, open=-10, extend=-2, score_only=True)
     if i_score > threshold:
         return ((index, i_score))
 
@@ -98,52 +104,55 @@ for i in range(len(iMF_list)):
     if os.path.exists(out_obj) and os.path.exists(out_file):
         print(f"""Files:
     - {os.path.basename(out_obj)}
-    - {os.path.basename(out_file)}      
+    - {os.path.basename(out_file)}     
 Already exists""")
     else:
         ifasta = os.path.join(peakSeqDir, "PeakRegioncDNA_category_1_" +
                               iConf2 + "_4_" + str(iMF) + ".fa")
-        peakSequences = SeqIO.parse(ifasta, "fasta")
+        if os.path.exists(ifasta):
+            peakSequences = SeqIO.parse(ifasta, "fasta")
 
-        # Create lists of sequences
-        peakRegions = []
-        for iseq in peakSequences:
-            peakRegions.append(iseq)
+            # Create lists of sequences
+            peakRegions = []
+            for iseq in peakSequences:
+                peakRegions.append(iseq)
 
-        # Align
-        t1_start = process_time()
-        pool = mp.Pool(mp.cpu_count()-1)
-        irange = range(len(mirSequences))
-        l_index = []
-        for i in range(len(peakRegions)):
-            ipeak = peakRegions[i].seq
-            aln_ind = [pool.apply(getAlignIndx,
-                                  args=(ipeak, mirSequences, j, 59, nuc44))
-                       for j in irange]
-            aln_ind_filtered = [i for i in aln_ind if i is not None]
-            results = [aln_ind_filtered, i]
-            l_index.append(results)
-        pool.close()
-        t1_stop = process_time()
-        print("Mapping time:", t1_stop, t1_start)
+            # Align
+            t1_start = process_time()
+            pool = mp.Pool(mp.cpu_count()-1)
+            irange = range(len(mirSequences))
+            l_index = []
+            for i in range(len(peakRegions)):
+                ipeak = peakRegions[i].seq
+                aln_ind = [pool.apply(getAlignIndx,
+                                      args=(ipeak,
+                                            mirSequences,
+                                            j, 59, nuc44))
+                           for j in irange]
+                aln_ind_filtered = [i for i in aln_ind if i is not None]
+                results = [aln_ind_filtered, i]
+                l_index.append(results)
+            pool.close()
+            t1_stop = process_time()
+            print("Mapping time:", t1_stop, t1_start)
 
-        # Check which sequences may be a miRNA target
-        l_index_filtered = []
-        for item in l_index:
-            if len(item[0]) > 0:
-                l_index_filtered.append(item)
+            # Check which sequences may be a miRNA target
+            l_index_filtered = []
+            for item in l_index:
+                if len(item[0]) > 0:
+                    l_index_filtered.append(item)
 
-        # Save indices
-        fileObj = open(out_obj, 'wb')
-        pickle.dump(l_index_filtered, fileObj)
-        fileObj.close()
+            # Save indices
+            fileObj = open(out_obj, 'wb')
+            pickle.dump(l_index_filtered, fileObj)
+            fileObj.close()
 
-        # Output summary
-        print('# List of pydegradome identified targets whose peak region align with a miRNA', file=open(out_file, 'w'))
+            # Output summary
+            print('# List of pydegradome identified targets whose peak region align with a miRNA', file=open(out_file, 'w'))
 
-        for i in l_index_filtered:
-            list_miRNAs = i[0]
-            peak_indx = i[1]
-            for j in list_miRNAs:
-                mir_indx = j[0]
-                print(f'Transcript: {peakRegions[peak_indx].name}\nComparison: {peakRegions[peak_indx].description.split(" ")[1]}\nmiRNA: {mirSequences[mir_indx].name}', file=open(out_file, 'a'))
+            for i in l_index_filtered:
+                list_miRNAs = i[0]
+                peak_indx = i[1]
+                for j in list_miRNAs:
+                    mir_indx = j[0]
+                    print(f'Transcript: {peakRegions[peak_indx]. name}\nComparison: {peakRegions[peak_indx].description.split(" ")[1]}\nmiRNA: {mirSequences[mir_indx].name}', file=open(out_file, 'a'))            

@@ -1,5 +1,4 @@
 ## Libraries
-suppressPackageStartupMessages(library(here))
 suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(ChIPpeakAnno))
 suppressPackageStartupMessages(library(dplyr))
@@ -57,15 +56,18 @@ for (i in seq_along(MF_list)) {
     ## Define input and output files
     input_file <- file.path(pydeg_pooled_dir,paste("Pooled",
                                                    i.conf_f, "4", i.MF, sep="_"))
-    out_file <- paste0(paste("PeakRegioncDNA_category_1",i.conf_f,"4",i.MF,
-                                sep = "_"),".fa")
+    out_file <- file.path(peakSeq_dir,
+                          paste0(paste("PeakRegioncDNA_category_1",
+                                       i.conf_f,"4",i.MF,
+                                sep = "_"),".fa"))
     if(!file.exists(out_file) && file.exists(input_file)) {
         
         
         ## Read pydeg input file
         pydeg_all <- fread(input_file)
         sel <- pydeg_all$category_1=="1" & pydeg_all$category_2=="A"
-        pydeg_sub <- pydeg_all[sel,]
+        if (sum(sel)>0) {
+           pydeg_sub <- pydeg_all[sel,]
         pydeg_sub$indx <- paste0(pydeg_sub$tx_name,
                                  pydeg_sub$peak_start,
                                  pydeg_sub$peak_stop)
@@ -141,9 +143,9 @@ for (i in seq_along(MF_list)) {
         mcols(gr.tmp)$sequence <- Pseq
 
         write2FASTA(gr.tmp,
-                    file = file.path(peakSeq_dir,out_file),
+                    file = out_file,
                     width = 50)
-        detach(pydeg_sub)
+        detach(pydeg_sub) 
+        }
     }
-    
 }

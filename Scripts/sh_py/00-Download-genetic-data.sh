@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Downloads genetic data: Annotation files, Genome files and creates a bowtie index for mapping
-# Execution: ./Scripts/Aux/00-Download-genetic-data.sh <Project_name> <Variable_specification_file> The last located in 'Env_variables'
-# Example: /bin/bash ./Scripts/Aux/00-Download-genetic-data.sh Zhang-2021 Zhang-2021_vars.txt
+# Execution: ./Scripts/sh_py/00-Download-genetic-data.sh <Project_name> <Variable_specification_file> The last located in 'Env_variables'
+# Example: /bin/bash ./Scripts/sh_py/00-Download-genetic-data.sh Zhang-2021 Zhang-2021_vars.txt
 #==================================================
 # Import variables
 ivars=Env_variables/Degradome_${1}.txt
 if [[ ! -f ${ivars} ]]
 then
-    /bin/bash Scripts/Aux/00-Variable_setup.sh ${1} ${2}
+    /bin/bash Scripts/sh_py/00-Variable_setup.sh ${1} ${2}
+    source ${ivars}
 else
     source ${ivars}
 fi
@@ -47,7 +48,7 @@ do
 	echo "$stp - Get annotation for genome"
 	stp=$((stp+1))
 	wget http://ftp.ensemblgenomes.org/pub/current/plants/${iformat}/${sp}/${file_base}.${iformat}.gz -O ${dl_file}
-	gzip -dk < ${download_dir}/${file_base}.${iformat}.gz > ${outfile}
+	gzip -dk < ${download_dir}/${file_base}.${iformat}.gz > ${base_dir}/Env_variables/Degradome_${ibase}.txt
     fi
 done
 
@@ -72,6 +73,33 @@ then
 fi
 echo "ref_miRNA==$outfile" >> Degradome_${1}.txt
 
+# Match the species under study against the list of organims
+iSp=$(echo $sp | sed 's/_/ /' | sed -e 's/^./\U&\E/g')
+read miRNAsp < <(awk -v sp="$iSp" 'BEGIN {FS="\t"} ; {if ($3 ~ sp) {print $1}}'\
+		     ${dest_dir}/${miRNAsp_list%.gz})
+
+# If the species was found download the file and add it to the list of variables
+if [[ ${miRNAsp:+1} ]]
+then
+    outfile=${dest_dir}/${miRNAsp}.gff3
+
+    # Download miRNA sequences for the target specie
+    if [ ! -f ${outfile} ]
+    then
+	echo "$stp - Download miRNA sequences from www.mirbase.org"
+	stp=$((stp+1))
+	iSp=$(echo $sp | sed 's/_/ /' | sed -e 's/^./\U&\E/g')
+	read miRNAsp < <(awk -v sp="$iSp" 'BEGIN {FS="\t"} ; {if ($3 ~ sp) {print $1}}' ${dest_dir}/${miRNAsp_list%.gz})
+	ifile=$(basename ${outfile})
+	wget https://www.mirbase.org/ftp/CURRENT/genomes/${ifile} -O ${outfile}
+    fi
+
+    #Add the path to the downloaded file to the list of variables
+    echo "ref_miRNA=$outfile" >> ${base_dir}/Env_variables/Degradome_${ibase}.txt
+
+    #Reload list of variables
+    source ${ivars}
+fi
 
 #Fasta files
 download_dir=${genetic_data_dir}/Compressed

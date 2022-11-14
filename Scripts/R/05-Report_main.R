@@ -49,15 +49,16 @@ for (i in seq_along(MF_list)) {
     i.MF <- MF_list[i]
     i.conf <- conf_list[i]
     i.conf_f <- gsub("\\.","_",i.conf)
-    my.input <- here(paste0("Scripts/R/05-Report_",ibase,".Rmd"))
-    out.name <- paste0("Top candidate Targets from Degradome Analysis MF-",i.MF,
+    my.input <- here(paste0("Scripts/R/Rmd/05-Report.Rmd"))
+    out.name <- paste0("Report Degradome Analysis ", ibase,"_MF-",i.MF,
                        "_Conf-",i.conf_f, "_",ibase,
                        ".html")
     if(!file.exists(file.path(report_dir,out.name))) {
         rmarkdown::render(my.input,
                           params = list(i.MF=i.MF,
                                         i.conf=i.conf,
-                                        output.dir=report_dir),
+                                        output.dir=report_dir,
+                                        doc_title=env$doc_title),
                           output_file = file.path(report_dir,out.name))
     }
 }

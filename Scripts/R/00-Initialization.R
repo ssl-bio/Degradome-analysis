@@ -1,5 +1,4 @@
 ## Libraries
-suppressPackageStartupMessages(library(here))
 suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(filesstrings))
 suppressPackageStartupMessages(library(dplyr))
@@ -16,14 +15,13 @@ option_list <- list(
     make_option(c("-b", "--base"), type="character", default=NULL, 
                 help="Project basename", metavar="character")
 ) 
- 
+
 opt_parser <- OptionParser(option_list=option_list)
 opt <- parse_args(opt_parser)
 
 setwd(opt$wd)
 ## Path settings
-
-env.raw <- read.table(here(paste0("Env_variables/Degradome_",opt$base,".txt")),
+env.raw <- read.table(paste0("Env_variables/Degradome_",opt$base,".txt"),
                       sep = "=", quote="")
 env.raw[,2] <- gsub('" "', '"\\, "', env.raw[,2])
 isel <- grepl("\\(",env.raw[,2])
@@ -34,7 +32,7 @@ for (i in seq_len(nrow(env.raw1))) {
     istr <- env.raw1[i,2]
     assign(env.raw1[i,1],
            eval(parse(text=paste0("c",gsub('" "', '"\\, "', istr)))))
-  }
+}
 
 env <- str_trim(env.raw2$V2)
 names(env) <- str_trim(env.raw2$V1)
@@ -60,31 +58,25 @@ input_df <- data.frame(ivars=c("bam_dir", "bam_tr_dir",
                                "bigwig_dir", "bigwig_dir", "pydeg_dir",
                                "htseq_dir"),
                        ikeys=c("bam_genomic", "bam_transcript",
-                               "bigwig_genomic", "bigwig_chromosome","pyDegradome",
+                               "bigwig_genomic", "bigwig_chromosome","PyDegradome",
                                "htseq_genomic"))
 
 for (i in seq_len(nrow(input_df))) {
-  ivar <- input_df[i,1]
-  ikey <- input_df[i,2]
-  isel <- grepl(ikey,idirs)
-  if(sum(isel)==1) {
-      assign(ivar,
-         file.path(env["output_dirB"],
-                        idirs[isel]))
-  }
+    ivar <- input_df[i,1]
+    ikey <- input_df[i,2]
+    isel <- grepl(ikey,idirs)
+    if(sum(isel)==1) {
+        ## assign(ivar,
+        ##    file.path(env["output_dirB"],
+        ##                   idirs[isel]))
+        assign(ivar,
+               eval(file.path(env["output_dirB"],idirs[isel])))
+    }
 }
 
-
-## bam_dir <- file.path(env["output_dirB"], "04-bam_genomic")
-## bam_tr_dir <- file.path(env["output_dirB"], "06-bam_transcript")
-## bigwig_dir <- file.path(env["output_dirB"],"04-bigwig_genomic")
-## pydeg_dir <- file.path(env["output_dirB"],"05-pyDegradome")
-## htseq_dir <- file.path(env["output_dirB"], "07-htseq_genomic")
-
-
 ## Output path
-pydeg_processed_dir <- file.path(env["output_dirR"],"01-pyDegradome_processed")
-pydeg_pooled_dir <- file.path(env["output_dirR"],"02-pyDegradome_pooled")
+pydeg_processed_dir <- file.path(env["output_dirR"],"01-PyDegradome_processed")
+pydeg_pooled_dir <- file.path(env["output_dirR"],"02-PyDegradome_pooled")
 report_dir <- file.path(env["output_dirR"],"03-Report")
 summary_dir <- file.path(report_dir,"Summary")
 
@@ -92,13 +84,13 @@ summary_dir <- file.path(report_dir,"Summary")
 pydeg_reads_dir <- file.path(env["supp_data_dir"],"Degradome_reads")
 
 ## Coordinates of regions with no peaks
-pydeg_np_dir <- file.path(env["supp_data_dir"],"pyDegradome_NonPeaks_coordinates")
+pydeg_np_dir <- file.path(env["supp_data_dir"],"PyDegradome_NonPeaks_coordinates")
 
 ## Max peak reads 
-maxP_dir <- file.path(env["supp_data_dir"], "pyDegradome_maxPeak_Scaled")
+maxP_dir <- file.path(env["supp_data_dir"], "PyDegradome_maxPeak_Scaled")
 
 ## Max transcript reads
-maxR_dir <- file.path(env["supp_data_dir"], "pyDegradome_maxTx_Scaled")
+maxR_dir <- file.path(env["supp_data_dir"], "PyDegradome_maxTx_Scaled")
 
 ## Root dir to store degradome plots
 pydeg_dplot_dir <- file.path(report_dir, "Dplots")
@@ -122,34 +114,30 @@ dir.create(maxP_dir)
 dir.create(pydeg_dplot_dir)
 dir.create(peakSeq_dir)
 dir.create(Rvarious_dir)
-#--------------------------------------------------------------------
+                                        #--------------------------------------------------------------------
 
-## Settings used for pyDegradome analysis
-## MF_list <- 3:4 # Multiplicable factor
-## conf_list <- c(0.95,0.99) # Confidence level
+## Settings used for PyDegradome analysis
 pydeg_settings <- unlist(strsplit(pydeg_script_settings," "))
 MF_list <- as.numeric(pydeg_settings[rep(c(FALSE,TRUE),
                                          length(pydeg_script_settings))])
 conf_list <- as.numeric(pydeg_settings[rep(c(TRUE,FALSE),
-                                         length(pydeg_script_settings))])
+                                           length(pydeg_script_settings))])
 ## Sample name list
-## control_samples <- c("SRR10759114","SRR10759115")
 names(control_samples) <- control_samples_name
-## test_samples <- c("SRR10759112","SRR10759113")
 names(test_samples) <- test_samples_name
 
 idf <- expand.grid(test=test_samples,nc=control_samples)
 comp_list <- list()
 for (i in seq_along(colnames(idf))) {
-  i.not <- seq_along(colnames(idf))[!seq_along(colnames(idf)) %in% i]
-  i.comp <- colnames(idf)[i]
-  i.comp_other <- colnames(idf)[i.not]
-  comp_list_sub <- NULL
-  for (j in seq_len(nrow(idf))) {
-    x <- paste("t",idf[j,i.comp],"c",idf[j,i.comp_other],sep="_")
-    comp_list_sub <- c(comp_list_sub,x)
-  }
-  comp_list[[i.comp]] <- comp_list_sub
+    i.not <- seq_along(colnames(idf))[!seq_along(colnames(idf)) %in% i]
+    i.comp <- colnames(idf)[i]
+    i.comp_other <- colnames(idf)[i.not]
+    comp_list_sub <- NULL
+    for (j in seq_len(nrow(idf))) {
+        x <- paste("t",idf[j,i.comp],"c",idf[j,i.comp_other],sep="_")
+        comp_list_sub <- c(comp_list_sub,x)
+    }
+    comp_list[[i.comp]] <- comp_list_sub
 }
 
 tmp <- data.frame(sapply(comp_list,c))
@@ -166,7 +154,7 @@ treatments <- gsub(" \\[[0-9]\\]","",
 
 idesign <- data.frame(sample=c(control_samples,test_samples),
                       replicate=c(seq_along(control_samples),seq_along(test_samples)),
-                     treatment=treatments)
+                      treatment=treatments)
 rownames(idesign) <- seq_len(nrow(idesign))
 
 sample_list <- c(test_samples,control_samples)
@@ -177,109 +165,111 @@ dg_bam_list <- structure(file.path(bam_dir,paste0(sample_list,".bam")),
                          names = sample_list)
 
 dg_bam_tr_list <- structure(file.path(bam_tr_dir,paste0(sample_list,"_uni_sort.bam")),
-                         names = sample_list)
+                            names = sample_list)
 ##--------------------------------------------------
 ##Build a transcript info data frame
 ##Data frame with feature, start, stop, gene name information from biomaRt
 tx_info_f <- file.path(Rvarious_dir,"Transcript_information.txt")
 if (!file.exists(tx_info_f)) {
-  mart <- useMart(dataset="athaliana_eg_gene",
-               biomart="plants_mart",
-               host="plants.ensembl.org")
+    sp_split <- unlist(strsplit(env$sp,"_"))
+    isp <- paste0(substr(sp_split[1],1,1),sp_split[2],"_eg_gene")
+    mart <- useMart(dataset=isp,
+                    biomart="plants_mart",
+                    host="plants.ensembl.org")
 
-  idescription <- getBM(
-      mart = mart,
-      attributes = c(
-          'ensembl_transcript_id',
-          'transcript_start',
-          'transcript_end',
-          'external_gene_name',
-          'entrezgene_description',
-          'interpro_short_description')
-  )
+    idescription <- getBM(
+        mart = mart,
+        attributes = c(
+            'ensembl_transcript_id',
+            'transcript_start',
+            'transcript_end',
+            'external_gene_name',
+            'entrezgene_description',
+            'interpro_short_description')
+    )
 
-  icoordinates <- getBM(
-      mart = mart,
-      attributes = c('ensembl_transcript_id',
-                     'cds_length'))
+    icoordinates <- getBM(
+        mart = mart,
+        attributes = c('ensembl_transcript_id',
+                       'cds_length'))
 
-  iannot <- merge(idescription,icoordinates,
-                  by='ensembl_transcript_id',all.x=TRUE)
+    iannot <- merge(idescription,icoordinates,
+                    by='ensembl_transcript_id',all.x=TRUE)
 
-  colnames(iannot) <- c("tx_name", "gene_region_start", "gene_region_end",
-                        "gene_name", "entrezgene_description",
-                        "interpro_short_description", "cds_len")
-  
-  i.cols <- c("ID", "tx_name", "gene_region_start",
-              "gene_region_end", "cds_len", "gene_name", "Description")
+    colnames(iannot) <- c("tx_name", "gene_region_start", "gene_region_end",
+                          "gene_name", "entrezgene_description",
+                          "interpro_short_description", "cds_len")
+    
+    i.cols <- c("ID", "tx_name", "gene_region_start",
+                "gene_region_end", "cds_len", "gene_name", "Description")
 
-  iannot_locus_yes <- iannot[iannot$tx_name!="",]
-  iannot_locus_yes$ID <- gsub("\\.[0-9]","",iannot_locus_yes$tx_name)
+    iannot_locus_yes <- iannot[iannot$tx_name!="",]
+    iannot_locus_yes$ID <- gsub("\\.[0-9]","",iannot_locus_yes$tx_name)
 
                                         # Create a Description column based on the entrezgene and interpro descriptions
-  ilog <- iannot_locus_yes$entrezgene_description==""
-  temp1 <- iannot_locus_yes[ilog,]
-  temp2 <- iannot_locus_yes[!ilog,]
+    ilog <- iannot_locus_yes$entrezgene_description==""
+    temp1 <- iannot_locus_yes[ilog,]
+    temp2 <- iannot_locus_yes[!ilog,]
 
-  temp1$Description <- temp1$interpro_short_description
-  temp2$Description <- temp2$entrezgene_description
+    temp1$Description <- temp1$interpro_short_description
+    temp2$Description <- temp2$entrezgene_description
 
-  temp1 <- dplyr::select(temp1,all_of(i.cols))
-  temp2 <- dplyr::select(temp2,all_of(i.cols))
-  tx_info <- rbind(temp1,temp2)
-  
-  
+    temp1 <- dplyr::select(temp1,all_of(i.cols))
+    temp2 <- dplyr::select(temp2,all_of(i.cols))
+    tx_info <- rbind(temp1,temp2)
+    
+    
                                         #Create an index column to remove duplicated entries
-  tx_info$indx <-  paste0(tx_info$tx_name,
-                          tx_info$gene_region_start,
-                          tx_info$gene_region_end)
-  
-  sel <- duplicated(tx_info$indx)
-  tx_info <- dplyr::select(tx_info[!sel,],all_of(i.cols))
+    tx_info$indx <-  paste0(tx_info$tx_name,
+                            tx_info$gene_region_start,
+                            tx_info$gene_region_end)
+    
+    sel <- duplicated(tx_info$indx)
+    tx_info <- dplyr::select(tx_info[!sel,],all_of(i.cols))
 
 
-  ## tx_info <- tx_info[with(tx_info,order(tx_name)),]
+    ## tx_info <- tx_info[with(tx_info,order(tx_name)),]
 
-  tx_info$tx_width <- tx_info$gene_region_end - tx_info$gene_region_start
+    tx_info$tx_width <- tx_info$gene_region_end - tx_info$gene_region_start
 
                                         #Identify genes with and without isoforms
-  n_occur_id <- data.frame(table(tx_info$ID))
-  i.log.dup <- tx_info$ID %in% n_occur_id$Var1[n_occur_id$Freq > 1]
-  df_dup <- tx_info[i.log.dup,]
-  df_uniq <- tx_info[!i.log.dup,]
+    n_occur_id <- data.frame(table(tx_info$ID))
+    i.log.dup <- tx_info$ID %in% n_occur_id$Var1[n_occur_id$Freq > 1]
+    df_dup <- tx_info[i.log.dup,]
+    df_uniq <- tx_info[!i.log.dup,]
 
                                         #work on genes with isoforms
                                         #Add representative gene model
-  dup_ID <- unique(df_dup$ID)
-  df_np_list <- list()
-  for(k in seq_along(dup_ID)) {
-      i.id <- dup_ID[k]
-      temp_df <- df_dup[df_dup$ID==i.id,]
-      ## tx_max <- max(temp_df$tx_width)
-      cds_max <- max(temp_df$cds_len)
-      temp_df$rep_gene <- if_else(temp_df$cds_len == cds_max, 1, 0)
+    dup_ID <- unique(df_dup$ID)
+    df_np_list <- list()
+    for(k in seq_along(dup_ID)) {
+        i.id <- dup_ID[k]
+        temp_df <- df_dup[df_dup$ID==i.id,]
+        ## tx_max <- max(temp_df$tx_width)
+        cds_max <- max(temp_df$cds_len)
+        temp_df$rep_gene <- if_else(temp_df$cds_len == cds_max, 1, 0)
 
-      if(length(which(temp_df$rep_gene==1))>1) {
-          ## cds length is the same, select the first isoform
-          min_tx <- min(temp_df$tx_name)
-          temp_df$rep_gene <- if_else(temp_df$tx_name == min_tx, 1, 0)
-      }
-      df_np_list[[k]] <- temp_df 
-  }
-  df_np <- do.call(rbind, df_np_list)
+        if(length(which(temp_df$rep_gene==1))>1) {
+            ## cds length is the same, select the first isoform
+            min_tx <- min(temp_df$tx_name)
+            temp_df$rep_gene <- if_else(temp_df$tx_name == min_tx, 1, 0)
+        }
+        df_np_list[[k]] <- temp_df 
+    }
+    df_np <- do.call(rbind, df_np_list)
 
                                         #work on genes without isoforms
                                         #Add representative gene model
-  df_uniq$rep_gene <- 1
+    df_uniq$rep_gene <- 1
 
                                         #Merge dataframes and sort
-  tx_info <- rbind(df_np,df_uniq)
-  tx_info <- tx_info[with(tx_info,order(tx_name)),]
-  
-  fwrite(tx_info,tx_info_f, quote = FALSE, sep = "\t")
+    tx_info <- rbind(df_np,df_uniq)
+    tx_info <- tx_info[with(tx_info,order(tx_name)),]
+    
+    fwrite(tx_info,tx_info_f, quote = FALSE, sep = "\t")
 }
 ##--------------------------------------------------
-#Make a TxDb object from transcript annotations available as a GFF3 or GTF file
+                                        #Make a TxDb object from transcript annotations available as a GFF3 or GTF file
 txdb_f <- file.path(Rvarious_dir,"txdb_object")
 if (!file.exists(txdb_f)) {
     txdb <- GenomicFeatures::makeTxDbFromGFF(#
@@ -287,22 +277,10 @@ if (!file.exists(txdb_f)) {
     saveDb(txdb,txdb_f)
 }
 
-## Import and process miRNA target database
-## mirna_f <- file.path(Rvarious_dir,"miRNA")
-## if (!file.exists(mirna_f)) {
-##     mirna <- read.csv(env$mirna_list)
-##                                         #Get first record with priority by the evidences.
-##     mirna$target_type <- factor(mirna$target_type, levels = c("VALIDATED", "PREDICTED", "predicted"))
-##     mirna <- mirna[order(mirna$target_type),]
-##     mirna <- mirna[!duplicated(mirna$target_acc),]
-##     data.table::setnames(mirna,"target_acc","ID")
-##     saveRDS(mirna,mirna_f)
-## }
-
 ## Generate a sqlite database
 ensemblDB_file <- file.path(Rvarious_dir,
                             gsub("\\.gtf",".sqlite",
-                                              basename(env[["ref_gtf"]])))
+                                 basename(env[["ref_gtf"]])))
 if (!file.exists(ensemblDB_file)) {
     DB <- ensDbFromGtf(gtf=env[["ref_gtf"]], path=Rvarious_dir)
 } else {
@@ -310,8 +288,8 @@ if (!file.exists(ensemblDB_file)) {
 }
 
 
-#Columns to round up
-cols2round <- c("max_non_peak_ratio", "max_non_peak_ratio_2", "max.peak.cpm", "max.read.tx.cpm", "ratioPTx")
+                                        #Columns to round up
+cols2round <- c("max_non_peak_ratio", "max_non_peak_ratio_2", "max.peak.scaled", "max.read.tx.scaled", "ratioPTx")
 
 ## Link to TAIR
 tair.prefix <- "<a  target=_blank href=https://www.arabidopsis.org/servlets/TairObject?type=locus&name="
@@ -325,7 +303,7 @@ pare.suffix <- "&model=1>"
 dplot.prefix <- "<a  target=_blank href="
 
 ## List of columns for rounding values
-cols2round <- c("Peak:NonPeak (1)", "Peak:NonPeak (2)", "Mean Peak Test (CPM)", "Mean Max Tx Ctrl (CPM)", "Peak(T):Max(C)")
+cols2round <- c("Peak:NonPeak (1)", "Peak:NonPeak (2)", "Mean Peak Test (Scaled)", "Mean Max Tx Ctrl (Scaled)", "Peak(T):Max(C)")
 
 ## Columns for exporting table of candidates
 i.cols.sort <- c("tx_name",
@@ -338,7 +316,6 @@ i.cols.sort <- c("tx_name",
                  "category_1",
                  "category_2",
                  "MorePeaks",
-                 "miRNA",
                  "Description",
                  "comparison",
                  "max_peak_1",#Metrics
@@ -348,8 +325,8 @@ i.cols.sort <- c("tx_name",
                  "max_np_gene_2",
                  "max_non_peak_ratio_2",
                  "shared",
-                 "max_peak_cpm",
-                 "max_read_tx_cpm",
+                 "max_peak_scaled",
+                 "max_read_tx_scaled",
                  "chr",#Coordinates
                  "strand",
                  "peak_start",
@@ -372,7 +349,6 @@ i.cols.export <- c("Transcript",#Main
                    "Cat. 1",
                    "Cat. 2",
                    "Peaks 2>",
-                   "miRNA",
                    "Description",
                    "Comparison",
                    "Max Peak (1)", #Metrics
@@ -381,9 +357,9 @@ i.cols.export <- c("Transcript",#Main
                    "Max Peak (2)",
                    "Max NonPeak (2)",
                    "Peak:NonPeak (2)", 
-                   "Shared (pyDegradome)",
-                   "Mean Peak Test (CPM)",
-                   "Mean Max Tx Ctrl (CPM)",
+                   "Shared (PyDegradome)",
+                   "Mean Peak Test (Scaled)",
+                   "Mean Max Tx Ctrl (Scaled)",
                    "Chr", #Coordinates
                    "Strand",
                    "P. start",
@@ -395,7 +371,7 @@ i.cols.export <- c("Transcript",#Main
                    "Feat. end",
                    "CDS len.",
                    "Tx len."
-  )
+                   )
 
 ## Plot settings
 sample_color <- c("#FC4E2A", "#E31A1C", "#2c84a8ff", "#214b7fff")
@@ -434,7 +410,7 @@ vars2delete <- c("cds_max",
                  "istr",
                  "mart",
                  "min_tx",
-                 "mirna",
+                 ## "mirna",
                  "n_occur_id",
                  "option_list",
                  "opt",

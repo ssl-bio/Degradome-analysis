@@ -161,7 +161,7 @@ for(k in seq_along(comp_pair_list)) {
 
                     ## pydeg2[sel,miRNA := 1]
                                         #------------------------------
-                    cat("Classification 2")
+                    cat("Classification 2\n")
                     i.samples <- unlist(strsplit(gsub("_and_","-",i.comp_f),
                                                  split="-"))
                     ##control samples
@@ -232,8 +232,8 @@ for(k in seq_along(comp_pair_list)) {
                     data.table::setnames(pydeg.tmp,
                                          c("tx_name",
                                            "indx",
-                                           "max_peak_cpm",
-                                           "max_read_tx_cpm",
+                                           "max_peak_scaled",
+                                           "max_read_tx_scaled",
                                            "ratioPTx"))
                     ##-----------------------------------
                                         #Merge with original dataframe
@@ -375,41 +375,38 @@ if (!file.exists(out_file)) {
 }
 ##==================================================
 ## Pool all samples
-for(i.MF in rev(MF_list)) {
-    for(i.conf in rev(conf_list)) {
-        if (i.MF == 4 && i.conf == 0.95 ||
-            i.MF == 3 && i.conf == 0.99) {
-            i.conf_f <- gsub("\\.","_",i.conf)
-            pydeg_all <- data.table()
-            pydeg_output_f <- file.path(pydeg_pooled_dir,
-                                                    paste("Pooled",i.conf_f,"4", i.MF,sep="_"))
-            for(k in seq_along(comp_pair_list)) {
-                comp_list <- comp_pair_list[[k]]
-                for(i.test in c("test","nc")) {
-                    for(i.comp in comp_list[[i.test]]) {
-                        i.comp_f <- mgsub::mgsub(i.comp,c("t_","_c_"),c("","-"))
-                        pydeg_input_f <-  file.path(pydeg_pooled_dir,
-                                                    paste0("Classification_",
-                                                           paste(i.comp_f, i.conf_f,"4", i.MF,sep="_")))
-                        
-                        ## if(!file.exists(pydeg_ouput_f)) {
-                            if(file.exists(pydeg_input_f)) {
-                                pydeg <- fread(pydeg_input_f)
+for (i in seq_along(MF_list)) {
+    i.MF <- MF_list[i]
+    i.conf <- conf_list[i]
+    i.conf_f <- gsub("\\.","_",i.conf)
+    pydeg_all <- data.table()
+    pydeg_output_f <- file.path(pydeg_pooled_dir,
+                                paste("Pooled",i.conf_f,"4", i.MF,sep="_"))
+    for(k in seq_along(comp_pair_list)) {
+        comp_list <- comp_pair_list[[k]]
+        for(i.test in c("test","nc")) {
+            for(i.comp in comp_list[[i.test]]) {
+                i.comp_f <- mgsub::mgsub(i.comp,c("t_","_c_"),c("","-"))
+                pydeg_input_f <-  file.path(pydeg_pooled_dir,
+                                            paste0("Classification_",
+                                                   paste(i.comp_f, i.conf_f,"4", i.MF,sep="_")))
+                
+                ## if(!file.exists(pydeg_ouput_f)) {
+                if(file.exists(pydeg_input_f)) {
+                    pydeg <- fread(pydeg_input_f)
 
                                         #Add comparison column
-                                pydeg$comparison <- i.comp_f
-                                
+                    pydeg$comparison <- i.comp_f
+                    
                                         #combine data simplified data
-                                pydeg_all <- rbind(pydeg_all, pydeg)
-                            }
-                        ## }
-                    }
+                    pydeg_all <- rbind(pydeg_all, pydeg)
                 }
-            }
-                                        #Data table with less columns
-            if(!is.null(pydeg_all) && nrow(pydeg_all)>0) {
-                fwrite(pydeg_all,pydeg_output_f, quote = FALSE, sep='\t')
             }
         }
     }
+                                        #Data table with less columns
+    if(!is.null(pydeg_all) && nrow(pydeg_all)>0) {
+        fwrite(pydeg_all,pydeg_output_f, quote = FALSE, sep='\t')
+    }
 }
+

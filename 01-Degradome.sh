@@ -8,9 +8,9 @@
 
 # Output dir: output_01/
 # Main output files:
-# - 05-pyDegradome_tophat/t_<sample1_rep1_c_<sample2_rep1>_<conf>_<win>_<mf>
+# - 05-PyDegradome/t_<sample1_rep1_c_<sample2_rep1>_<conf>_<win>_<mf>
 
-# Example: output_01/05-pyDegradome_tophat/t_SRR10759112_c_SRR10759114_0.95_4_4
+# Example: output_01/05-PyDegradome/t_SRR10759112_c_SRR10759114_0.95_4_4
 #==================================================
 # Check the number of arguments
 if [[ -z $1 ]]
@@ -26,11 +26,53 @@ fi
 ivars=Env_variables/Degradome_${1}.txt
 if [[ ! -f ${ivars} ]]
 then
-    /bin/bash Scripts/Aux/00-Variable_setup.sh ${1} ${2}
+    /bin/bash Scripts/sh_py/00-Variable_setup.sh ${1} ${2}
     source ${ivars}
 else
     source ${ivars}
 fi
+
+#Check files
+ifiles=(
+    ${At_genome}
+    ${At_ncRNA}
+    ${At_transcript}
+    ${ref_gff}
+    ${ref_gff_rep}
+    ${ref_gtf}
+    ${ref_gtf_sorted})
+
+file_stp=0
+for ifile in ${ifiles[@]}
+do
+    if [ -f ${ifile} ]
+    then
+	file_stp=$((file_stp+1))
+    fi
+done
+if [ ${file_stp} -lt ${#ifiles[@]} ]
+then
+    /bin/bash Scripts/sh_py/00-Download-genetic-data.sh $ibase $ivars
+fi
+
+# Check for bowtie indices
+indices=(
+    ${bowtie_index_Tx}
+    ${bowtie_index_genome}
+    ${bowtie_index_ncRNA})
+indx_stp=0
+for indx in ${indices[@]}
+do
+    if [ -d $(dirname ${indx}) ] && [ -n "$(ls -A $(dirname ${indx}))" ]
+    then
+	indx_stp=$((indx_stp+1))
+    fi
+done
+if [ ${indx_stp} -lt ${#indices[@]} ]
+then
+    /bin/bash Scripts/sh_py/00-Generate_Bowtie_index.sh $ibase $ivars
+fi
+
 
 ##Step counter
 stp=1
@@ -59,8 +101,8 @@ qc_loop () {
 	then
 	    iext="${strarr[-2]}.${strarr[-1]}"
 	fi
-	ibase=${ifile/.$iext/}
-	outfile=$2/${ibase}_fastqc.html
+	fbase=${ifile/.$iext/}
+	outfile=$2/${fbase}_fastqc.html
 	if [ ! -f $outfile ]
 	then
 	    #no-group = Disable grouping of bases for reads >50bp.
@@ -101,8 +143,8 @@ dir_exist $idir
 for ifastq in $(ls $idir_prev)
 do
     readarray -d . -t strarr <<< "$ifastq"
-    ibase=${strarr[0]}
-    if [ ! -f ${idir}/${ibase}_trimmed.fq.gz ]
+    fbase=${strarr[0]}
+    if [ ! -f ${idir}/${fbase}_trimmed.fq.gz ]
     then
 	ifile=$(basename $ifastq)
 	trim_galore --cores $cores --gzip $idir_prev/${ifile} --output_dir $idir
@@ -152,8 +194,8 @@ idir="$QC_dir/03-fastqQC_NorRNA"
 dir_exist $idir
 qc_loop $idir_prev $idir
 
-## 06 - Map to genome [tophat]
-echo "$stp - Map to genome [tophat]"
+## 06 - Map to genome
+echo "$stp - Map to genome"
 stp=$((stp+1))
 set +u
 conda deactivate
@@ -161,14 +203,14 @@ source activate ${conda_pydeg_run}
 set -u
 
 idir_prev="03-fastq_No-rRNA"
-idir="04-sam_genomic_tophat"
+idir="04_1-bam_genomic"
 dir_exist $idir
 for ifastq in $(ls $idir_prev)
 do
     # ifile=$(basename $ifastq)
     readarray -d . -t strarr <<< "$ifastq"
-    ibase=${strarr[0]}
-    outfile=$idir/${ifastq%.No-rRNA.fastq}.mapped_genome.sam
+    fbase=${strarr[0]}
+    outfile=$idir/${ifastq%.No-rRNA.fastq}.mapped_genome.bam
     if [ ! -f $outfile ]
     then
 	tophat --num-threads $cores --read-mismatches 2 \
@@ -178,38 +220,32 @@ do
                --output-dir  $idir/${ifile%.No-rRNA.fastq} \
 	       ${base_dir}/${bowtie_index_genome} $idir_prev/$ifastq
 	ireads=$(cat $idir/${ifile%.No-rRNA.fastq}/align_summary.txt | grep Mapped | awk '{print $3}')
-	echo $ibase, $ireads >> $idir/Log_reads.txt
+	echo $fbase, $ireads >> $idir/Log_reads.txt
 	
-	mv $idir/${ifile%.No-rRNA.fastq}/accepted_hits.sam $outfile
+	mv $idir/${ifile%.No-rRNA.fastq}/accepted_hits.bam $outfile
+	samtools index $outfile
     fi
 done
 
-## 07 - Create bam index and convert bam to sam
-echo "$stp - Create bam index and convert bam to sam"
+## 07 - Convert bam to sam
+echo "$stp - Convert bam to sam"
 stp=$((stp+1))
 
-idir_prev="04-bam_genomic_tophat"
-idir_sam="04-sam_chromosome_tophat"
+idir_prev="04_1-bam_genomic"
+idir_sam="04_2-sam_genomic"
 dir_exist $idir_sam
-idir_bam="04-bam_chromosome_tophat"
-dir_exist $idir_bam
+
 for ibam in $(ls $idir_prev/*.bam)
 do
     ifile=$(basename $ibam)
-    outfile=$idir_sam/${ifile%genome.bam}genome.sam
+    outfile=$idir_sam/${ifile%.bam}.sam
     if [ ! -f $outfile ]
     then
 	samtools view -@ $cores $idir_prev/$ifile > $outfile
     fi
-
-    outfile=$idir_bam/${ifile%genome.bam}genome.bam
-    if [ ! -f $outfile ]
-    then
-	samtools index $outfile
-    fi 
 done
 
-# 07 - PyDegradome
+# 08 - PyDegradome
 echo "$stp - PyDegradome"
 stp=$((stp+1))
 set +u
@@ -217,13 +253,12 @@ conda deactivate
 source activate ${conda_pydeg_run}
 set -u
 
-idir_prev="04-sam_genomic_tophat"
-idir="05-pyDegradome_tophat"
+idir_prev="04_2-sam_genomic"
+idir="05-PyDegradome"
 dir_exist $idir
 
 # Calculate fasta length
 read fasta_len < <(awk '/^>/ {seqtotal+=seqlen; seqlen=0; seq+=1; next} {seqlen += length($0)} END{print 0.01*(seqtotal+seqlen)}' ${base_dir}/${At_genome})
-
 
 for isettings in "${pydeg_script_settings[@]}"
 do
@@ -270,32 +305,12 @@ conda deactivate
 source activate ${conda_pydeg_map}
 set -u
 
-## 08 - Convert sam to bam and create bam index
-echo "$stp - Convert sam to bam and create bam index"
-stp=$((stp+1))
-
-idir_prev="04-sam_genomic_tophat"
-idir="04-bam_genomic_tophat"
-dir_exist $idir
-for isam in $(ls $idir_prev/*.sam)
-do
-    ifile=$(basename $isam)
-    outfile=$idir/${ifile%.sam}.bam
-    if [ ! -f $outfile ]
-    then
-	samtools view -@ -S -b $idir_prev/$ifile > \
-		 $outfile
-	samtools index $outfile
-    fi
-done
-
-
 ## 09 - Bam Quality check
 echo "$stp - Bam Quality check"
 stp=$((stp+1))
 
-idir_prev="04-bam_genomic_tophat"
-idir="$QC_dir/04-bam_genomic_qualimap_tophat"
+idir_prev="04_1-bam_genomic"
+idir="$QC_dir/04-bam_genome_qualimap"
 dir_exist $idir
 
 for ibam in $(ls $idir_prev/*.bam)
@@ -309,13 +324,13 @@ do
 done
 
 
-## 10 - Map filtered reads to transcriptome tophat
-echo "$stp - Map filtered reads to transcript tophat"
+## 10 - Map filtered reads to transcriptome
+echo "$stp - Map filtered reads to transcript"
 stp=$((stp+1))
 idir_prev="03-fastq_No-rRNA"
 idir_log="$Log_dir/06-Log_transcript_mapping"
 dir_exist $idir_log
-idir="06-sam_transcript_tophat"
+idir="06_1-sam_transcript"
 dir_exist $idir
 for ifastq in $(ls $idir_prev | grep fastq)
 do
@@ -332,40 +347,40 @@ do
     fi
 done
 
-## 11 - Extract uniquely mapped [tophat]
-echo "$stp - Extract uniquely mapped [tophat]"
+## 11 - Extract uniquely mapped [Transcript]
+echo "$stp - Extract uniquely mapped [Transcript]"
 stp=$((stp+1))
-idir_prev="06-sam_transcript_tophat"
-idir="06-sam_transcript_tophat_sort"
+idir_prev="06_1-sam_transcript"
+idir="06_2-sam_transcript"
 dir_exist $idir
-for isam in $(ls $idir_prev/*.sam)
+for isam in $(ls $idir_prev/*transcriptome.sam)
 do
     ifile=$(basename $isam)
     outfile=$idir/${ifile}
     if [ ! -f $outfile ]
     then
-	# #Sort
-	samtools sort -@ $cores  $idir_prev/$ifile -O sam -o $idir/${ifile%.mapped_transcriptome.sam}_sort.sam
+	# Sort
+	samtools sort -@ $cores  $idir_prev/${ifile%.mapped_transcriptome.sam}.sam -O sam -o $idir_prev/${ifile%.mapped_transcriptome.sam}_sort.sam
 
-	# #Filter by XS: tag
+	# Filter by XS: tag
 	samtools view -q 10 -G 4 -G 16\
-		 -h   $idir/${ifile%.mapped_transcriptome.sam}_sort.sam | grep  -v "XS:" > $outfile
+		 -h   $idir_prev/${ifile%.mapped_transcriptome.sam}_sort.sam | grep  -v "XS:" > $outfile
     fi
 done
 
-## 12 - Convert sam to bam and create bam index [Tophat]
-echo "$stp - Convert sam to bam and create bam index [Tophat]"
+## 12 - Convert sam to bam and create bam index [Transcript]
+echo "$stp - Convert sam to bam and create bam index [Transcript]"
 stp=$((stp+1))
-idir_prev="06-sam_transcript_tophat_sort"
-idir="06-bam_transcript_tophat"
+idir_prev="06_2-sam_transcript"
+idir="06_3-bam_transcript"
 dir_exist $idir
-for isam in $(ls $idir_prev | grep "mapped_transcriptome.sam")
+for isam in $(ls $idir_prev | grep ".sam")
 do
     ifile=$(basename $isam)
     outfile=$idir/${ifile%.sam}.bam
     if [ ! -f $outfile ]
     then
-	samtools view -@ 8 -S -b $idir_prev/$ifile > \
+	samtools view -@ $cores -S -b $idir_prev/$ifile > \
                  $outfile
 	samtools index $outfile
     fi
@@ -376,8 +391,8 @@ done
 echo "$stp - Bam Transcript Quality check"
 stp=$((stp+1))
 
-idir_prev="06-bam_transcript_tophat"
-idir="$QC_dir/06-bam_transcript_qualimap_tophat"
+idir_prev="06_3-bam_transcript"
+idir="$QC_dir/06-bam_transcript_qualimap"
 dir_exist $idir
 
 for ibam in $(ls $idir_prev | grep -E ".mapped_transcriptome.bam$")
@@ -395,8 +410,8 @@ done
 echo "$stp - Count mapped reads to features [genome]"
 stp=$((stp+1))
 
-idir_prev="04-bam_genomic_tophat"
-idir="07-htseq_genomic_tophat"
+idir_prev="04_1-bam_genomic"
+idir="07-htseq_genomic"
 dir_exist $idir
 for ibam in $(ls $idir_prev/*.bam)
 do
@@ -405,24 +420,34 @@ do
     if [ ! -f $outfile ]
     then
 	nice htseq-count -f bam -s yes -t exon -i Parent -m intersection-strict -n $cores \
-	     --additional-attr=exon_number $idir_prev/$ifile ${base_dir}/$ref_gff_representative \
+	     --additional-attr=exon_number $idir_prev/$ifile ${base_dir}/$ref_gff_rep \
 	     -c ${outfile}
     fi
 done
+
 set +u
 conda deactivate
 source activate ${conda_pydeg_R}
 set -u
+
 if [ ! -f  ${output_dirB}/${idir}/"Size-factor.txt" ]
 then
-    Rscript ${base_dir}/${script_dir}/R/A-GetSizeFactor.R \
+    inputfile=${base_dir}/Env_variables/"minimal_variables_"${ibase}".RData"
+    if [ ! -f ${inputfile} ]
+    then
+	Rscript ${base_dir}/Scripts/R/00-Initialization.R \
+		-b ${ibase} \
+		-d ${base_dir}
+    fi
+    
+    Rscript ${base_dir}/Scripts/R/A-GetSizeFactor.R \
 	    -r ${output_dir_base} \
 	    -d ${output_dirB}/${idir} \
 	    -b $1 \
 	    -s ${base_dir}
 fi
 
-## 15 - Count mapped reads to features
+## 15 - Count mapped reads to features [transcript]
 echo "$stp - Count mapped reads to features [transcript]"
 set +u
 conda deactivate
@@ -430,8 +455,8 @@ source activate ${conda_pydeg_map}
 set -u
 stp=$((stp+1))
 
-idir_prev="06-bam_transcript_tophat"
-idir="08-salmon_transcript_tophat"
+idir_prev="06_3-bam_transcript"
+idir="08-salmon_transcript"
 dir_exist $idir
 for ibam in $(ls $idir_prev/*.bam)
 do
@@ -449,7 +474,16 @@ source activate ${conda_pydeg_R}
 set -u
 if [ ! -f  ${output_dirB}/${idir}/"Size-factor.txt" ]
 then
-    Rscript ${base_dir}/${script_dir}/R/A-GetSizeFactor.R \
+    inputfile=${base_dir}/Env_variables/"minimal_variables_"${ibase}".RData"
+    if [ ! -f ${inputfile} ]
+    then
+	Rscript ${base_dir}/Scripts/R/00-Initialization.R \
+		-b ${ibase} \
+		-d ${base_dir}
+	
+    fi
+    
+    Rscript ${base_dir}/Scripts/R/A-GetSizeFactor.R \
 	    -r ${output_dir_base} \
 	    -d ${output_dirB}/${idir} \
 	    -b $1 \
@@ -463,16 +497,16 @@ conda deactivate
 source activate ${conda_pydeg_map}
 set -u
 stp=$((stp+1))
-idir_prev="04-bam_genomic_tophat"
-size_factors="07-htseq_genomic_tophat/Size-factor.txt"
-idir="04-bigwig_genomic_tophat"
+idir_prev="04_1-bam_genomic"
+size_factors="07-htseq_genomic/Size-factor.txt"
+idir="04_3-bigwig_genomic"
 dir_exist $idir
 for ibam in $(ls $idir_prev/*.bam)
 do
     ifile=$(basename $ibam)
     isample=$(echo $ifile | sed 's/\..*$//g')
     # Raw counts
-    outfile=$idir/${ifile%.bam}_r.bw
+    outfile=$idir/${ifile%.mapped_*.bam}_G_r.bw
     if [ ! -f $outfile ]
     then
 	echo "Generating $(basename $outfile)"
@@ -482,7 +516,7 @@ do
                     --Offset 1 --normalizeUsing None --scaleFactor '-1'
     fi
 
-    outfile=$idir/${ifile%.bam}_f.bw
+    outfile=$idir/${ifile%.mapped_*.bam}_G_f.bw
     if [ ! -f $outfile ]
     then
 	echo "Generating $(basename $outfile)"
@@ -495,7 +529,7 @@ do
     # Scale
     # Read size factor
     read size_factor < <(awk -v sample="${isample}" '{if ($1 ~ sample) {print $2}}' ${size_factors})
-    outfile=$idir/${ifile%.bam}_r_DESeq.bw 
+    outfile=$idir/${ifile%.mapped_*.bam}_G_r_DESeq.bw 
     if [ ! -f $outfile ]
     then
 	echo "Generating $(basename $outfile)"
@@ -505,12 +539,12 @@ do
                     --Offset 1 --normalizeUsing None --scaleFactor -${size_factor}
     fi
 
-    outfile=$idir/${ifile%.bam}_f_DESeq.bw
+    outfile=$idir/${ifile%.mapped_*.bam}_G_f_DESeq.bw
     if [ ! -f $outfile ]
     then
 	echo "Generating $(basename $outfile)"
 	bamCoverage -p $cores -b $idir_prev/$ifile \
-                    -o $idir/$outfile \
+                    -o $outfile \
                     --binSize 1 --filterRNAstrand reverse  \
                     --Offset 1 --normalizeUsing None --scaleFactor ${size_factor}
     fi
@@ -522,9 +556,8 @@ done
 echo "$stp - Create 5 Wig track [transcript]"
 stp=$((stp+1))
 
-
-idir_prev="06-bam_transcript_tophat"
-idir="06-bigwig_transcript_tophat"
+idir_prev="06_3-bam_transcript"
+idir="06_4-bigwig_transcript"
 dir_exist $idir
 
 for ibam in $(ls $idir_prev/*.bam)
@@ -532,7 +565,7 @@ do
     ifile=$(basename $ibam)
     isample=$(echo $ifile | sed 's/\..*$//g')
     # Raw counts
-    outfile=$idir/${ifile%.bam}_uni_r.bw
+    outfile=$idir/${ifile%.mapped_*.bam}_Tx_r.bw
     if [ ! -f $outfile ]
     then
 	echo "Generating $(basename $outfile)"
@@ -542,7 +575,7 @@ do
                     --Offset 1 --normalizeUsing None --scaleFactor '-1'
     fi
 
-    outfile=$idir/${ifile%.bam}_uni_f.bw
+    outfile=$idir/${ifile%.mapped_*.bam}_Tx_f.bw
     if [ ! -f $outfile ]
     then
 	echo "Generating $(basename $outfile)"
@@ -555,7 +588,7 @@ do
     # Scale
     # Read size factor
     read size_factor < <(awk -v sample="${isample}" '{if ($1 ~ sample) {print $2}}' ${size_factors})
-    outfile=$idir/${ifile%.bam}_uni_r_DESeq.bw 
+    outfile=$idir/${ifile%.mapped_*.bam}_Tx_r_DESeq.bw 
     if [ ! -f $outfile ]
     then
 	echo "Generating $(basename $outfile)"
@@ -565,12 +598,12 @@ do
                     --Offset 1 --normalizeUsing None --scaleFactor -${size_factor}
     fi
 
-    outfile=$idir/${ifile%.bam}_uni_f_DESeq.bw
+    outfile=$idir/${ifile%.mapped_*.bam}_Tx_f_DESeq.bw
     if [ ! -f $outfile ]
     then
 	echo "Generating $(basename $outfile)"
 	bamCoverage -p $cores -b $idir_prev/$ifile \
-                    -o $idir/$outfile \
+                    -o $outfile \
                     --binSize 1 --filterRNAstrand reverse  \
                     --Offset 1 --normalizeUsing None --scaleFactor ${size_factor}
     fi

@@ -1,0 +1,101 @@
+#----------------------------------------------------------------------
+# Important!
+# Make sure these variables are correct
+#----------------------------------------------------------------------
+#Input root directory
+base_dir=/home/saul/Bioinformatics/Degradome-analysis
+
+# Output dir
+output_dir_base=/media/saul/Ext_HDD/Degradome-${ibase}
+
+#Report title
+doc_title="Degradome analysis comparing unicellular and mature pollen"
+
+#Number of available threads
+cores=5
+
+#Sample names
+control_samples=("SRR10759114" "SRR10759115")
+control_samples_name=("Mature pollen [1]"  "Mature pollen [2]")
+test_samples=("SRR10759112" "SRR10759113")
+test_samples_name=("Uninuclear pollen [1]" "Uninuclear pollen [2]")
+isamples=("${test_samples[@]}" "${control_samples[@]}")
+
+# Comparison list (test control)
+pydeg_comp_list=("SRR10759112  SRR10759114" "SRR10759113  SRR10759115")
+
+# PyDegradome settings (Confidence interval and Multiplicative factor)
+pydeg_script_settings=("0.95 4" "0.99 3" "0.95 2")
+
+#File names constants
+Sp_base=Arabidopsis_thaliana.TAIR10
+sp=arabidopsis_thaliana
+ver=.55
+ich=Pt
+i_chr=.${ich}
+
+#Anaconda environments (Make sure the environments exist)
+conda_pydeg_map=pydeg_map
+conda_pydeg_run=pydeg_run
+conda_pydeg_R=pydeg_R
+
+# Names for Bowtie indices
+#ncRNA
+bowtie_index_ncRNA=${genetic_data_dir}/Index/Bowtie_index_At_ncRNA/Bowtie_index_At_ncRNA
+
+# Genome
+bowtie_index_genome=${genetic_data_dir}/Index/Bowtie_index_At_DNA/Bowtie_index_At_DNA
+
+# Transcriptome
+bowtie_index_Tx=${genetic_data_dir}/Index/Bowtie_index_At_cDNA/Bowtie_index_At_cDNA
+
+#----------------------------------------------------------------------
+# Caution: Check the file name
+#----------------------------------------------------------------------
+#Annotation files
+#Base
+ref_gtf=${genetic_data_dir}/Annotation/${Sp_base}${ver}.gtf
+
+# Mapping
+ref_gff=${genetic_data_dir}/Annotation/${Sp_base}${ver}.gff3
+
+
+#----------------------------------------------------------------------
+# Note: These variables can be kept without modification
+#----------------------------------------------------------------------
+# Sorted annotation file
+ref_gtf_sorted=${ref_gtf%.gtf}_sorted.gtf
+
+# Annotation file (representative isoform)
+ref_gff_rep=${ref_gff%.gff3}_repr.gff3
+
+# Directories
+#Output directory for R scripts
+output_dirR=${output_dir_base}/output_02
+
+#Output directory for Bash script
+output_dirB=${output_dir_base}/output_01
+
+#Supporting data
+supp_data_dir=${output_dir_base}/Supporting_data
+
+# Script directory
+script_dir=Scripts
+
+# PyDegradome Script
+pydeg_script=${script_dir}/Third_party/PyDegradome_t.py
+
+# Directory for annotation, references, indices for mapping
+genetic_data_dir=Genetic_data
+
+# Fasta filenames
+At_genome=${genetic_data_dir}/Fasta/${Sp_base}.dna.fa
+At_transcript=${genetic_data_dir}/Fasta/${Sp_base}.cdna.all.fa
+At_ncRNA=${genetic_data_dir}/Fasta/${Sp_base}.ncrna.fa
+#----------------------------------------------------------------------
+
+
+
+
+
+

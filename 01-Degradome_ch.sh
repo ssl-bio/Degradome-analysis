@@ -26,7 +26,7 @@ fi
 ivars=Env_variables/Degradome_${1}.txt
 if [[ ! -f ${ivars} ]]
 then
-    /bin/bash Scripts/Aux/00-Variable_setup.sh ${1} ${2}
+    /bin/bash Scripts/sh_py/00-Variable_setup.sh ${1} ${2}
     source ${ivars}
 else
     source ${ivars}
@@ -220,13 +220,12 @@ conda deactivate
 source activate ${conda_pydeg_run}
 set -u
 
-idir_prev="04-_3-sam_chromosome"
+idir_prev="04_3-sam_chromosome"
 idir="05-pyDegradome"
 dir_exist $idir
 
 # Calculate fasta length
 read fasta_len < <(awk '/^>/ {seqtotal+=seqlen; seqlen=0; seq+=1; next} {seqlen += length($0)} END{print 0.01*(seqtotal+seqlen)}' ${base_dir}/${At_genome})
-
 
 for isettings in "${pydeg_script_settings[@]}"
 do
@@ -245,6 +244,7 @@ do
 		   -ctrl $idir_prev/${icomp[1]}.mapped_chromosome.sam  \
 		   -test $idir_prev/${icomp[0]}.mapped_chromosome.sam \
 		   -iconf ${iset[0]} \
+		   -t ${fasta_len} \
 		   -w 4 \
 		   -imf ${iset[1]} \
 		   -o $outfile &
@@ -260,6 +260,7 @@ do
 		   -ctrl $idir_prev/${icomp[0]}.mapped_chromosome.sam  \
 		   -test $idir_prev/${icomp[1]}.mapped_chromosome.sam \
 		   -iconf ${iset[0]} \
+		   -t ${fasta_len} \
 		   -w 4 \
 		   -imf ${iset[1]} \
 		   -o $outfile
@@ -324,14 +325,25 @@ dir_exist $idir
 for isam in $(ls $idir_prev/*transcriptome.sam)
 do
     ifile=$(basename $isam)
+    outfile_tmp=$idir_prev/${ifile%.mapped_transcriptome.sam}_sort.sam
     outfile=$idir/${ifile}
-    if [ ! -f $outfile ]
+    if [ ! -f $outfile ] || [ ! -f $outfile_tmp ]
     then
 	# Filter by chromosome
+	# Change chromosome name for Arabidopsis
+	if [ ${ich} == "Pt" ]
+	then
+	    ich2=C
+	elif [${ich} == "Mt"]
+	then
+	    ich2=M
+	else
+	    ich2=${ich}
+	fi
 	samtools view -H $idir_prev/$ifile |
-	    awk -v ch="AT${ich}" '{if ($1 ~ /@SQ/){if($2 ~ ch){print $0}} else {print $0}}'  > $idir_prev/${ifile%.mapped_transcriptome.sam}_ch.sam
+	    awk -v ch="AT${ich2}" '{if ($1 ~ /@SQ/){if($2 ~ ch){print $0}} else {print $0}}'  > $idir_prev/${ifile%.mapped_transcriptome.sam}_ch.sam
 	samtools view $idir_prev/$ifile |
-	    awk -v ch="AT${ich}" '{if($3 ~ ch){print $0}}'  >> $idir_prev/${ifile%.mapped_transcriptome.sam}_ch.sam
+	    awk -v ch="AT${ich2}" '{if($3 ~ ch){print $0}}'  >> $idir_prev/${ifile%.mapped_transcriptome.sam}_ch.sam
 
 	# Sort
 	samtools sort -@ $cores  $idir_prev/${ifile%.mapped_transcriptome.sam}_ch.sam -O sam -o $idir_prev/${ifile%.mapped_transcriptome.sam}_sort.sam
@@ -402,25 +414,26 @@ set +u
 conda deactivate
 source activate ${conda_pydeg_R}
 set -u
+
 if [ ! -f  ${output_dirB}/${idir}/"Size-factor.txt" ]
 then
-    inputfile=${base_dir}/Env_variables/"minimal_variables_"${ibase}".RData"
-    if [ ! -f ${inputfile} ]
+    inputfile1=${base_dir}/Env_variables/"minimal_variables_"${ibase}".RData"
+    inputfile2=${output_dir_base}/Supporting_data/"Initialization_variables.RData"
+    
+    if [ ! -f ${inputfile1} ] || [ ! -f ${inputfile2} ]
     then
-	Rscript ${base_dir}/${script_dir}/R/00-Initialization.R \
+	Rscript ${base_dir}/Scripts/R/00-Initialization.R \
 		-b ${ibase} \
 		-d ${base_dir}
-	
     fi
-    
-    Rscript ${base_dir}/${script_dir}/R/A-GetSizeFactor.R \
+    Rscript ${base_dir}/Scripts/R/A-GetSizeFactor.R \
 	    -r ${output_dir_base} \
 	    -d ${output_dirB}/${idir} \
-	    -b $1 \
+	    -b ${ibase} \
 	    -s ${base_dir}
 fi
 
-## 15 - Count mapped reads to features
+## 15 - Count mapped reads to features [transcript]
 echo "$stp - Count mapped reads to features [transcript]"
 set +u
 conda deactivate
@@ -435,6 +448,7 @@ for ibam in $(ls $idir_prev/*.bam)
 do
     ifile=$(basename $ibam)
     outdir=$idir/${ifile%.bam}
+
     if [ ! -d $outdir ]
     then
 	salmon quant -p ${cores} -t ${base_dir}/${At_transcript} -l U -a $idir_prev/$ifile -o ${outdir}
@@ -450,16 +464,16 @@ then
     inputfile=${base_dir}/Env_variables/"minimal_variables_"${ibase}".RData"
     if [ ! -f ${inputfile} ]
     then
-	Rscript ${base_dir}/${script_dir}/R/00-Initialization.R \
+	Rscript ${base_dir}/Scripts/R/00-Initialization.R \
 		-b ${ibase} \
 		-d ${base_dir}
 	
     fi
     
-    Rscript ${base_dir}/${script_dir}/R/A-GetSizeFactor.R \
+    Rscript ${base_dir}/Scripts/R/A-GetSizeFactor.R \
 	    -r ${output_dir_base} \
 	    -d ${output_dirB}/${idir} \
-	    -b $1 \
+	    -b ${ibase} \
 	    -s ${base_dir}
 fi
 
