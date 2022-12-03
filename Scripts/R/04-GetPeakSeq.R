@@ -1,3 +1,14 @@
+## 04-getPeakSeq.R
+
+## Description: From candidate peaks classified into groups 1-A, it produces a fasta file with sequences around the peak (30nt window). Transcript name, comparison where peak was found and genomic and transcrip coordinates are included in the header of each fasta entry
+
+## Output dir: Supporting_data/Peak_sequences
+## Output files:
+## - PeakRegioncDNA_category_1_<conf>_<win>_<mf>.fa
+
+## Example:
+## - PeakRegioncDNA_category_1_0_95_4_2.fa
+
 ## Libraries
 suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(ChIPpeakAnno))
@@ -25,7 +36,8 @@ setwd(opt$wd)
 ivarF <- "Initialization_variables.RData"
 ivarM <- paste0("minimal_variables_", opt$base, ".RData")
 error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' providing the root directory and the project base name.\nAlternatively run '02-Degradome.sh' providing the project base name.\n"
-                                        #Minimal variables
+
+## Minimal set of variables
 min_variables <- file.path("Env_variables", ivarM)
 if (file.exists(min_variables)) {
     load(min_variables)
@@ -67,26 +79,26 @@ for (i in seq_along(MF_list)) {
         pydeg_all <- fread(input_file)
         sel <- pydeg_all$category_1=="1" & pydeg_all$category_2=="A"
         if (sum(sel)>0) {
-           pydeg_sub <- pydeg_all[sel,]
-        pydeg_sub$indx <- paste0(pydeg_sub$tx_name,
-                                 pydeg_sub$peak_start,
-                                 pydeg_sub$peak_stop)
-        
-        gnm <- GRanges(pydeg_sub$chr,
-                       IRanges(start=pydeg_sub$peak_start,
-                               end=pydeg_sub$peak_stop),
-                       strand=pydeg_sub$strand)
-        gnm_tx <- genomeToTranscript(gnm, EDB)  
+            pydeg_sub <- pydeg_all[sel,]
+            pydeg_sub$indx <- paste0(pydeg_sub$tx_name,
+                                     pydeg_sub$peak_start,
+                                     pydeg_sub$peak_stop)
+            
+            gnm <- GRanges(pydeg_sub$chr,
+                           IRanges(start=pydeg_sub$peak_start,
+                                   end=pydeg_sub$peak_stop),
+                           strand=pydeg_sub$strand)
+            gnm_tx <- genomeToTranscript(gnm, EDB)  
 
-        tx_names <- pydeg_sub$tx_name
+            tx_names <- pydeg_sub$tx_name
 
-        seq.df <- data.frame()
-        for (i in seq_along(gnm_tx)) {
-            itx <- tx_names[i]
-            idf <- data.frame(gnm_tx[[i]])
-            seltx <- idf$tx_id %in% itx
-            selfa <- fasta_names %in% itx
-            if (sum(seltx)==1 && sum(selfa)==1) {
+            seq.df <- data.frame()
+            for (i in seq_along(gnm_tx)) {
+                itx <- tx_names[i]
+                idf <- data.frame(gnm_tx[[i]])
+                seltx <- idf$tx_id %in% itx
+                selfa <- fasta_names %in% itx
+                if (sum(seltx)==1 && sum(selfa)==1) {
                                         # Get sequence
                 ifasta <- i.fasta[selfa]
                 

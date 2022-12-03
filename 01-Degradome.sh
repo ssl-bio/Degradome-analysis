@@ -4,7 +4,7 @@
 # Description: Pipeline to map reads to a genome and transcript reference and then perform the identification of significant degradation fragments between pairs of samples (PyDegradome, Gaglia et al. PLOS Pathogens 2015:11)
 
 # Execution: 01-Degradome.sh <Project_name> <Variable_specification_file> The last located in 'Env_variables'
-# Example: /bin/bash 01-Degradome.sh Zhang-2021 Zhang-2021_vars.txt
+# Example: /bin/bash 01-Degradome.sh Oliver-2022 Oliver-2022_vars.txt
 
 # Output dir: output_01/
 # Main output files:
@@ -26,26 +26,26 @@ fi
 ivars=Env_variables/Degradome_${1}.txt
 if [[ ! -f ${ivars} ]]
 then
-    /bin/bash Scripts/sh_py/00-Variable_setup.sh ${1} ${2}
-    source ${ivars}
+    /bin/bash Scripts/sh_py/00-Variable_setup.sh "${1}" "${2}"
+    source "${ivars}"
 else
-    source ${ivars}
+    source "${ivars}"
 fi
 
 #Check files
 ifiles=(
-    ${At_genome}
-    ${At_ncRNA}
-    ${At_transcript}
-    ${ref_gff}
-    ${ref_gff_rep}
-    ${ref_gtf}
-    ${ref_gtf_sorted})
+    "${At_genome}"
+    "${At_ncRNA}"
+    "${At_transcript}"
+    "${ref_gff}"
+    "${ref_gff_rep}"
+    "${ref_gtf}"
+    "${ref_gtf_sorted}")
 
 file_stp=0
-for ifile in ${ifiles[@]}
+for ifile in "${ifiles[@]}"
 do
-    if [ -f ${ifile} ]
+    if [ -f "${ifile}" ]
     then
 	file_stp=$((file_stp+1))
     fi
@@ -57,9 +57,9 @@ fi
 
 # Check for bowtie indices
 indices=(
-    ${bowtie_index_Tx}
-    ${bowtie_index_genome}
-    ${bowtie_index_ncRNA})
+    "${bowtie_index_Tx}"
+    "${bowtie_index_genome}"
+    "${bowtie_index_ncRNA}")
 indx_stp=0
 for indx in ${indices[@]}
 do
@@ -72,7 +72,6 @@ if [ ${indx_stp} -lt ${#indices[@]} ]
 then
     /bin/bash Scripts/sh_py/00-Generate_Bowtie_index.sh $ibase $ivars
 fi
-
 
 ##Step counter
 stp=1
@@ -248,11 +247,23 @@ done
 # 08 - PyDegradome
 echo "$stp - PyDegradome"
 stp=$((stp+1))
+
+# Check if sorted annotation file exists
+if [[ ! ${ref_gtf_sorted:+1} ]]
+then
+    echo "Generate auxiliary annotation files"
+    # Change to input dir
+    cd ${base_dir}
+    /bin/bash Scripts/sh_py/00-Process_Annotation_files.sh ${ibase} ${ivars}
+    source ${ivars}
+    # Change to output dir
+    cd ${output_dirB}
+fi
+
 set +u
 conda deactivate
 source activate ${conda_pydeg_run}
 set -u
-
 idir_prev="04_2-sam_genomic"
 idir="05-PyDegradome"
 dir_exist $idir
@@ -360,7 +371,7 @@ do
     if [ ! -f $outfile ]
     then
 	# Sort
-	samtools sort -@ $cores  $idir_prev/${ifile%.mapped_transcriptome.sam}.sam -O sam -o $idir_prev/${ifile%.mapped_transcriptome.sam}_sort.sam
+	samtools sort -@ $cores  $idir_prev/${ifile} -O sam -o $idir_prev/${ifile%.mapped_transcriptome.sam}_sort.sam
 
 	# Filter by XS: tag
 	samtools view -q 10 -G 4 -G 16\
@@ -443,7 +454,7 @@ then
     Rscript ${base_dir}/Scripts/R/A-GetSizeFactor.R \
 	    -r ${output_dir_base} \
 	    -d ${output_dirB}/${idir} \
-	    -b $1 \
+	    -b ${ibase} \
 	    -s ${base_dir}
 fi
 
@@ -486,7 +497,7 @@ then
     Rscript ${base_dir}/Scripts/R/A-GetSizeFactor.R \
 	    -r ${output_dir_base} \
 	    -d ${output_dirB}/${idir} \
-	    -b $1 \
+	    -b ${ibase} \
 	    -s ${base_dir}
 fi
 

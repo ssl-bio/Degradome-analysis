@@ -1,3 +1,48 @@
+## 00-Initialization.R
+
+## Description: Script to set up most of the variables to be used in the rest of the analysis,  creates the directories to store the output files and also produces auxiliary files to speed up the annotation of peaks. 
+
+## Output dirs created:
+## [PyDegradome output with annotations]
+## <output_root_dir>/output_02/01-PyDegradome_processed 
+
+## [PyDegradome_processed output classified and combined]
+## <output_root_dir>/output_02/02-PyDegradome_pooled 
+
+## [Summary counts of all classification steps]
+## <output_root_dir>/output_02/03-Report/Summary 
+
+## [Tables with mapping reads to speed up process]
+## <output_root_dir>/Supporting_data/Degradome_reads 
+
+## [Tables with coordinates of non-peak regions]
+## <output_root_dir>/Supporting_data/PyDegradome_NonPeaks_coordinates 
+
+## [Tables with scaled mapping reads (test peaks)]
+## <output_root_dir>/Supporting_data/PyDegradome_maxPeak_Scaled 
+
+## [Tables with scaled mapping reads (ctrl transcript)]
+## <output_root_dir>/Supporting_data/PyDegradome_maxTx_Scaled 
+
+## [Fasta files with genomic sequences around peaks]
+## <output_root_dir>/Supporting_data/Peak_sequences 
+
+## [Auxilary files to speed up running of scripts]     
+## <output_root_dir>/Supporting_data/R 
+
+## Auxiliary files created:
+## [Variables defined in this script including those in the Variable definition file]
+## - Initialization_variables.RData
+
+## [A Sqlite database used to transform genomic coordinates to transcript coordinates]
+## - Arabidopsis_thaliana.TAIR10.55.sqlite
+
+## [Table from plant ensembl to obtain the longest isoform (representative gene)]
+## - Transcript_information.txt
+
+## [A transcript database object build from the annotation file]
+## - txdb_object
+
 ## Libraries
 suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(filesstrings))
@@ -66,9 +111,6 @@ for (i in seq_len(nrow(input_df))) {
     ikey <- input_df[i,2]
     isel <- grepl(ikey,idirs)
     if(sum(isel)==1) {
-        ## assign(ivar,
-        ##    file.path(env["output_dirB"],
-        ##                   idirs[isel]))
         assign(ivar,
                eval(file.path(env["output_dirB"],idirs[isel])))
     }
@@ -269,7 +311,8 @@ if (!file.exists(tx_info_f)) {
     fwrite(tx_info,tx_info_f, quote = FALSE, sep = "\t")
 }
 ##--------------------------------------------------
-                                        #Make a TxDb object from transcript annotations available as a GFF3 or GTF file
+
+## Make a TxDb object from transcript annotations available as a GFF3 or GTF file
 txdb_f <- file.path(Rvarious_dir,"txdb_object")
 if (!file.exists(txdb_f)) {
     txdb <- GenomicFeatures::makeTxDbFromGFF(#
@@ -288,8 +331,8 @@ if (!file.exists(ensemblDB_file)) {
 }
 
 
-                                        #Columns to round up
-cols2round <- c("max_non_peak_ratio", "max_non_peak_ratio_2", "max.peak.scaled", "max.read.tx.scaled", "ratioPTx")
+## Columns to round up
+## cols2round <- c("max_non_peak_ratio", "max_non_peak_ratio_2", "max.peak.scaled", "max.read.tx.scaled", "ratioPTx")
 
 ## Link to TAIR
 tair.prefix <- "<a  target=_blank href=https://www.arabidopsis.org/servlets/TairObject?type=locus&name="
@@ -299,22 +342,28 @@ tair.suffix <- ">TAIR</a>"
 pare.prefix <- "<a  target=_blank href=https://mpss.danforthcenter.org/web/php/pages/GeneAnalysis.php?SITE=at_pare&featureName="
 pare.suffix <- "&model=1>"
 
-## Link to Degradome plots
-dplot.prefix <- "<a  target=_blank href="
+## Link to imges
+plot.prefix <- "<a target=_blank href="
+plot.suffix1 <- ' onclick=\"window.open('
+plot.suffix_widthG <- ",'geneplot', 'resizable, width=1060, height=758'); return false;"
+plot.suffix_widthP <- ",'peakplot', 'resizable, width=1060, height=758'); return false;"
+plot.suffix_widthS <- ",'algwindowA', 'resizable, width=575, height=290'); return false;"
+plot.suffix_widths <- ",'algwindowB', 'resizable, width=450, height=220'); return false;"
 
 ## List of columns for rounding values
-cols2round <- c("Peak:NonPeak (1)", "Peak:NonPeak (2)", "Mean Peak Test (Scaled)", "Mean Max Tx Ctrl (Scaled)", "Peak(T):Max(C)")
+cols2round <- c("Peak:NonPeak (1)", "Peak:NonPeak (2)", "Mean Peak Test (Scaled)", "Mean Max Tx Ctrl (Scaled)", "Peak(T):Max(C)", "DeltaG\nopen")
 
 ## Columns for exporting table of candidates
-i.cols.sort <- c("tx_name",
+i.cols.sort <- c("cat1_2",
+                 "tx_name",
                  "Gene_plot",
                  "Peak_plot",
                  "rep_gene",
                  "feature_type",
                  "gene_name",
                  "ratioPTx",
-                 "category_1",
-                 "category_2",
+                 ## "category_1",
+                 ## "category_2",
                  "MorePeaks",
                  "Description",
                  "comparison",
@@ -339,15 +388,16 @@ i.cols.sort <- c("tx_name",
                  "cds_len",
                  "tx_width")
 
-i.cols.export <- c("Transcript",#Main
+i.cols.export <- c("Cat\n1&2",#Main
+                   "Transcript",
                    "Gene\nplot",
                    "Peak\nplot",
                    "Is rep.",
                    "Feature",
                    "Gene name",
                    "Peak(T):Max(C)",
-                   "Cat. 1",
-                   "Cat. 2",
+                   ## "Cat. 1",
+                   ## "Cat. 2",
                    "Peaks 2>",
                    "Description",
                    "Comparison",
@@ -377,7 +427,7 @@ i.cols.export <- c("Transcript",#Main
 sample_color <- c("#FC4E2A", "#E31A1C", "#2c84a8ff", "#214b7fff")
 
 ## Highlight color
-col_hl <- "#e5ff00bf" #f2ff00cc#e5ff00d9
+col_hl <- "#e5ff00bf" #f2ff00cc #e5ff00d9
 
 ## Color for bases
 base_col <- c( A="#33A02C",C="#1F78B4",U="#E31A1C", G="#FF7F00")

@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Script to setup variables for bash and R scripts
-# Usage: ./Scripts/sh_py/00-Variable_setup.sh <Project_name> <Variable_specification_file> The last located in 'Env_variables'
+
+# Usage: /bin/bash Scripts/sh_py/00-Variable_setup.sh <Project_name> <Variable_specification_file> The last located in 'Env_variables'
+
 # Example: /bin/bash ./Scripts/sh_py/00-Variable_setup.sh Oliver-2022 Oliver-2022_vars.txt
 #==================================================
 # Check the number of arguments

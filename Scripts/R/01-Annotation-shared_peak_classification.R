@@ -47,7 +47,8 @@ setwd(opt$wd)
 ivarF <- "Initialization_variables.RData"
 ivarM <- paste0("minimal_variables_", opt$base, ".RData")
 error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' providing the root directory and the project base name.\nAlternatively run '02-Degradome.sh' providing the project base name.\n"
-                                        #Minimal variables
+
+## Minimal set of variables
 min_variables <- file.path("Env_variables", ivarM)
 if (file.exists(min_variables)) {
     load(min_variables)
@@ -280,8 +281,6 @@ for(i.test in c("test","nc")) {
                                         #Count and select duplicated entries
                     dfs.ID <- SplitDFbyNpeaks(df.sort,"indx_dup")
                     df_dup <- dfs.ID$df_dup
-                    ## df_uniq <- dfs.ID$df_uniq
-                    
                     dup_ID <- unique(df_dup$tx_name)
                     df_np_list <- list()
                     if (length(dup_ID)>0) {
@@ -481,6 +480,7 @@ for (i in seq_along(MF_list)) {
     i.conf_f <- gsub("\\.","_",i.conf)
     for(i.test in c("test","nc")) {
         cat("\tMF=",i.MF," conf=", i.conf, " Set=", i.test, "\n")
+
         ##Generate lists from pyDegradome output for comparing pairs
         cat("\t**Generate lists from pyDegradome output for comparing pairs")
         for(i.comp in comp_list[[i.test]]) {
@@ -583,7 +583,7 @@ for (i in seq_along(MF_list)) {
                             ## Indices of overlaps
                             sel <- sel_list[[j]]
 
-                            ##Change column names
+                            ## Change column names
                             pydeg <- data.frame(pydeg_list[[i.comp]])
                             setnames(pydeg,
                                      old=icols,
@@ -599,7 +599,7 @@ for (i in seq_along(MF_list)) {
                             pydegSingleRep_peak$shared <- j
                             
                             rm(pydeg)
-                            ##select entries with ID
+                            ## select entries with ID
                             df.ID <- pydegSingleRep_peak[grepl("^AT",
                                                                pydegSingleRep_peak$ID),]
                             
@@ -664,6 +664,7 @@ for (i in seq_along(MF_list)) {
                             } else {
                                 df_dup <- NULL
                             }
+
                             ##Working on genes with a single peak
                             cat("\t\tCalculating Max Non Peak (Peaks 1)...\n")
                             if(!is.null(df_uniq) && nrow(df_uniq) > 0) {

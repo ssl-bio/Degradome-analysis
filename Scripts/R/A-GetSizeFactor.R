@@ -1,6 +1,10 @@
 ## A-GetSizefactor.R
 
-## Using the read counts it calculates the size factor used for normalization
+## Using the read counts it calculates the size factor used for normalization. This is done using DESeq2 library. The output consist in a tab-separated file with the calculated size factor for each sample.
+
+## Output dir: output_01/07-htseq_genomic or output_01/08-salmon_transcript
+## Output files:
+## - Size-factor.txt
 
 ## Libraries
 suppressPackageStartupMessages(library(DESeq2))
@@ -31,7 +35,8 @@ if (!file.exists(out_file)) {
     ivarF <- "Initialization_variables.RData"
     ivarM <- paste0("minimal_variables_", opt$base, ".RData")
     error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' providing the root directory and the project base name.\nAlternatively run '02-Degradome.sh' providing the project base name.\n"
-                                        #Minimal variables
+
+    ## Minimal set of variables
     min_variables <- file.path(opt$sd,"Env_variables", ivarM)
     if (file.exists(min_variables)) {
         load(min_variables)
@@ -50,7 +55,6 @@ if (!file.exists(out_file)) {
     ## Merge counts
     counts_list <- list()
     list_counts <- list.files(opt$wd, pattern ="txt|tsv")
-    ## list_counts <- list.files(opt$wd, pattern ="tsv")
     for (base_name in sample_list) {
         ## Get input file
         isel <- grepl(base_name,list_counts)
@@ -82,7 +86,6 @@ if (!file.exists(out_file)) {
                                        colData=columnData,
                                        design=~treatment)
     DESeq.ds <- DESeq.ds[rowSums(counts(DESeq.ds))>0, ]
-                                        #colSums(counts(DESeq.ds))
     DESeq.ds <- estimateSizeFactors(DESeq.ds)
     size.factor <- sizeFactors(DESeq.ds)
 

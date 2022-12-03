@@ -4,13 +4,13 @@
 # Description: Pipeline to map reads to a genome and transcript reference, filter those to a target chromosome and then perform the identification of significant degradation fragments between pairs of samples (PyDegradome, Gaglia et al. PLOS Pathogens 2015:11)
 
 # Execution: 01-Degradome_ch.sh <Project_name> <Variable_specification_file> The last located in 'Env_variables'
-# Example: /bin/bash 01-Degradome_ch.sh Zhang-2021 Zhang-2021_vars.txt
+# Example: /bin/bash 01-Degradome_ch.sh Oliver-2022 Oliver-2022_vars.txt
 
 # Output dir: output_01/
 # Main output files:
-# - 05-pyDegradome/t_<sample1_rep1_c_<sample2_rep1>_<conf>_<win>_<mf>
+# - 05-PyDegradome/t_<sample1_rep1_c_<sample2_rep1>_<conf>_<win>_<mf>
 
-# Example: output_01/05-pyDegradome/t_SRR10759112_c_SRR10759114_0.95_4_4
+# Example: output_01/05-PyDegradome/t_SRR10759112_c_SRR10759114_0.95_4_4
 #==================================================
 # Check the number of arguments
 if [[ -z $1 ]]
@@ -23,13 +23,54 @@ else
 fi
 
 # Import variables
-ivars=Env_variables/Degradome_${1}.txt
+ivars=Env_variables/Degradome_${ibase}.txt
 if [[ ! -f ${ivars} ]]
 then
-    /bin/bash Scripts/sh_py/00-Variable_setup.sh ${1} ${2}
-    source ${ivars}
+    /bin/bash Scripts/sh_py/00-Variable_setup.sh "${ibase}" "${2}"
+    source "${ivars}"
 else
-    source ${ivars}
+    source "${ivars}"
+fi
+
+#Check files
+ifiles=(
+    "${At_genome}"
+    "${At_ncRNA}"
+    "${At_transcript}"
+    "${ref_gff}"
+    "${ref_gff_rep}"
+    "${ref_gtf}"
+    "${ref_gtf_sorted}")
+
+file_stp=0
+for ifile in "${ifiles[@]}"
+do
+    if [ -f "${ifile}" ]
+    then
+	file_stp=$((file_stp+1))
+    fi
+done
+if [ ${file_stp} -lt ${#ifiles[@]} ]
+then
+    /bin/bash Scripts/sh_py/00-Download-genetic-data.sh $ibase $ivars
+fi
+
+# Check for bowtie indices
+indices=(
+    "${bowtie_index_Tx}"
+    "${bowtie_index_genome}"
+    "${bowtie_index_ncRNA}")
+indx_stp=0
+for indx in ${indices[@]}
+do
+    if [ -d $(dirname ${indx}) ] && [ -n "$(ls -A $(dirname ${indx}))" ]
+    then
+	indx_stp=$((indx_stp+1))
+    fi
+done
+if [ ${indx_stp} -lt ${#indices[@]} ]
+then
+    /bin/bash Scripts/sh_py/00-Generate_Bowtie_index.sh $ibase $ivars
 fi
 
 ##Step counter
@@ -165,10 +206,10 @@ idir="04_1-bam_genomic"
 dir_exist $idir
 for ifastq in $(ls $idir_prev)
 do
-    ifile=$(basename $ifastq)
-    readarray -d . -t strarr <<< "$ifile"
+    # ifile=$(basename $ifastq)
+    readarray -d . -t strarr <<< "$ifastq"
     fbase=${strarr[0]}
-    outfile=$idir/${ifile%.No-rRNA.fastq}.mapped_genome.bam
+    outfile=$idir/${ifastq%.No-rRNA.fastq}.mapped_genome.bam
     if [ ! -f $outfile ]
     then
 	tophat --num-threads $cores --read-mismatches 2 \
@@ -176,7 +217,7 @@ do
 	       --GTF ${base_dir}/$ref_gff --min-intron-length 25 \
 	       --max-intron-length 3000  \
                --output-dir  $idir/${ifile%.No-rRNA.fastq} \
-	       ${base_dir}/${bowtie_index_genome} $idir_prev/$ifile
+	       ${base_dir}/${bowtie_index_genome} $idir_prev/$ifastq
 	ireads=$(cat $idir/${ifile%.No-rRNA.fastq}/align_summary.txt | grep Mapped | awk '{print $3}')
 	echo $fbase, $ireads >> $idir/Log_reads.txt
 	
@@ -215,13 +256,26 @@ done
 # 08 - PyDegradome
 echo "$stp - PyDegradome"
 stp=$((stp+1))
+
+# Check if sorted annotation file exists
+if [[ ! ${ref_gtf_sorted:+1} ]]
+then
+    echo "Generate auxiliary annotation files"
+    # Change to input dir
+    cd ${base_dir}
+    /bin/bash Scripts/sh_py/00-Process_Annotation_files.sh ${ibase} ${ivars}
+    source ${ivars}
+    # Change to output dir
+    cd ${output_dirB}
+fi
+
 set +u
 conda deactivate
 source activate ${conda_pydeg_run}
 set -u
 
 idir_prev="04_3-sam_chromosome"
-idir="05-pyDegradome"
+idir="05-PyDegradome"
 dir_exist $idir
 
 # Calculate fasta length
@@ -244,7 +298,7 @@ do
 		   -ctrl $idir_prev/${icomp[1]}.mapped_chromosome.sam  \
 		   -test $idir_prev/${icomp[0]}.mapped_chromosome.sam \
 		   -iconf ${iset[0]} \
-		   -t ${fasta_len} \
+		   # -t ${fasta_len} \
 		   -w 4 \
 		   -imf ${iset[1]} \
 		   -o $outfile &
@@ -260,7 +314,7 @@ do
 		   -ctrl $idir_prev/${icomp[0]}.mapped_chromosome.sam  \
 		   -test $idir_prev/${icomp[1]}.mapped_chromosome.sam \
 		   -iconf ${iset[0]} \
-		   -t ${fasta_len} \
+		   # -t ${fasta_len} \
 		   -w 4 \
 		   -imf ${iset[1]} \
 		   -o $outfile
@@ -334,7 +388,7 @@ do
 	if [ ${ich} == "Pt" ]
 	then
 	    ich2=C
-	elif [${ich} == "Mt"]
+	elif [ ${ich} == "Mt" ]
 	then
 	    ich2=M
 	else
@@ -410,6 +464,7 @@ do
 	     -c ${outfile}
     fi
 done
+
 set +u
 conda deactivate
 source activate ${conda_pydeg_R}
@@ -426,6 +481,7 @@ then
 		-b ${ibase} \
 		-d ${base_dir}
     fi
+    
     Rscript ${base_dir}/Scripts/R/A-GetSizeFactor.R \
 	    -r ${output_dir_base} \
 	    -d ${output_dirB}/${idir} \
@@ -448,7 +504,6 @@ for ibam in $(ls $idir_prev/*.bam)
 do
     ifile=$(basename $ibam)
     outdir=$idir/${ifile%.bam}
-
     if [ ! -d $outdir ]
     then
 	salmon quant -p ${cores} -t ${base_dir}/${At_transcript} -l U -a $idir_prev/$ifile -o ${outdir}

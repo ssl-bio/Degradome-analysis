@@ -1,0 +1,90 @@
+#----------------------------------------------------------------------
+# Important!
+# Make sure these variables are correct
+#----------------------------------------------------------------------
+# Input root directory
+base_dir=/media/particiones/Compartidos/saul/Cloned/saul/Degradome-analysis
+
+# Output dir
+output_dir_base=/media/saul/L-Drive/Bioinformatics/Degradome-${ibase}
+
+# Report title
+doc_title="Degradome analysis of miR755 over-expressing lines"
+
+# Number of available threads
+cores=5
+
+# Sample names
+control_samples=("SRR3945024" "SRR3945025")
+control_samples_name=("At WT [1]" "At WT [2]")
+test_samples=("SRR103220401" "SRR103220402")
+test_samples_name=("At miR775a-ox [1]" "At miR775a-ox [2]")
+isamples=("${test_samples[@]}" "${control_samples[@]}")
+
+# Comparison list (test control)
+pydeg_comp_list=("SRR103220401  SRR3945024" "SRR103220402  SRR3945025")
+
+# PyDegradome settings (Confidence interval and Multiplicative factor)
+pydeg_script_settings=("0.95 4" "0.99 3" "0.95 2")
+
+# File names constants
+Sp_base=Arabidopsis_thaliana.TAIR10
+sp=arabidopsis_thaliana
+ver=.55
+ich=2
+i_chr=.${ich}
+#chr_pref=.chromosome
+
+# Anaconda environments (Make sure the environments exist)
+conda_pydeg_map=pydeg_map
+conda_pydeg_run=pydeg_run
+conda_pydeg_R=pydeg_R
+
+# Names for Bowtie indices
+# ncRNA
+bowtie_index_ncRNA=Genetic_data/Index/Bowtie_index_At_ncRNA/Bowtie_index_At_ncRNA
+
+# Genome
+bowtie_index_genome=Genetic_data/Index/Bowtie_index_At_DNA/Bowtie_index_At_DNA
+
+# Transcriptome
+bowtie_index_Tx=Genetic_data/Index/Bowtie_index_At_cDNA/Bowtie_index_At_cDNA
+
+#----------------------------------------------------------------------
+# Caution: Check the file name
+#----------------------------------------------------------------------
+# Annotation files
+# Base
+ref_gtf=Genetic_data/Annotation/${Sp_base}${ver}.gtf
+
+# Mapping
+ref_gff=Genetic_data/Annotation/${Sp_base}${ver}.gff3
+
+#----------------------------------------------------------------------
+# Note: These variables can be kept without modification
+#----------------------------------------------------------------------
+# Sorted annotation file
+ref_gtf_sorted=${ref_gtf%.gtf}_sorted.gtf
+
+# Annotation file (representative isoform)
+ref_gff_rep=${ref_gff%.gff3}_repr.gff3
+
+# Directories
+#Output directory for R scripts
+output_dirR=${output_dir_base}/output_02
+
+# Output directory for Bash script
+output_dirB=${output_dir_base}/output_01
+
+# Supporting data
+supp_data_dir=${output_dir_base}/Supporting_data
+
+# Third party scripts
+pydeg_script=Scripts/Third_party/PyDegradome/PyDegradome_t.py
+mirmap_script_dir=./Scripts/Third_party/miRmap-1.1
+
+# Fasta filenames
+At_genome=Genetic_data/Fasta/${Sp_base}.dna.fa
+At_transcript=Genetic_data/Fasta/${Sp_base}.cdna.all.fa
+At_ncRNA=Genetic_data/Fasta/${Sp_base}.ncrna.fa
+#----------------------------------------------------------------------

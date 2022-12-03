@@ -1,4 +1,6 @@
-##Description:  Wrapper for running Rmd files
+## 05-Report_main.R
+
+##Description:  Wrapper for producing html reports for all PyDegradome settings tested. Required packages are loaded and variables imported. Those required to run the Rmarkdown files (which will produce the Html report) are passed as a list (params)
 
 ## Libraries
 suppressPackageStartupMessages(library(rmarkdown))
