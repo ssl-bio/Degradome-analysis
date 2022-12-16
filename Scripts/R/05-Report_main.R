@@ -16,10 +16,10 @@ suppressPackageStartupMessages(library(fontawesome))
 
 ## Parse arguments
 option_list <- list(
-    make_option(c("-d", "--wd"), type="character", default=NULL, 
-                help="Working directory", metavar="character"),
-    make_option(c("-b", "--base"), type="character", default=NULL, 
-                help="Project basename", metavar="character")
+    make_option(c("-d", "--wd"), type = "character", default = NULL,
+                help = "Working directory", metavar = "character"),
+    make_option(c("-b", "--base"), type = "character", default = NULL,
+                help = "Project basename", metavar = "character")
 )
 
 opt_parser <- OptionParser(option_list=option_list)
@@ -35,8 +35,8 @@ error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' provid
 min_variables <- file.path("Env_variables", ivarM)
 if (file.exists(min_variables)) {
     load(min_variables)
-    ivars <- file.path(supp_data_dir,"R/Initialization_variables.RData")
-    if(file.exists(ivars)) {
+    ivars <- file.path(supp_data_dir, "R/Initialization_variables.RData")
+    if (file.exists(ivars)) {
         load(ivars)
     } else {
         cat(ivarF, error_msg)
@@ -50,17 +50,17 @@ if (file.exists(min_variables)) {
 for (i in seq_along(MF_list)) {
     i.MF <- MF_list[i]
     i.conf <- conf_list[i]
-    i.conf_f <- gsub("\\.","_",i.conf)
+    i.conf_f <- gsub("\\.", "_", i.conf)
     my.input <- here(paste0("Scripts/R/Rmd/05-Report.Rmd"))
-    out.name <- paste0("Report Degradome Analysis ", ibase,"_MF-",i.MF,
-                       "_Conf-",i.conf_f, "_",ibase,
+    out.name <- paste0("Report Degradome Analysis ", ibase, "_MF-", i.MF,
+                       "_Conf-", i.conf_f, "_", ibase,
                        ".html")
-    if(!file.exists(file.path(report_dir,out.name))) {
+    if (!file.exists(file.path(report_dir, out.name))) {
         rmarkdown::render(my.input,
-                          params = list(i.MF=i.MF,
-                                        i.conf=i.conf,
-                                        output.dir=report_dir,
-                                        doc_title=env$doc_title),
-                          output_file = file.path(report_dir,out.name))
+                          params = list(i.MF = i.MF,
+                                        i.conf = i.conf,
+                                        output.dir = report_dir,
+                                        doc_title = env$doc_title),
+                          output_file = file.path(report_dir, out.name))
     }
 }

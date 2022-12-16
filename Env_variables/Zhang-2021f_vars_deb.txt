@@ -3,26 +3,26 @@
 # Make sure these variables are correct
 #----------------------------------------------------------------------
 # Input root directory
-base_dir=/media/particiones/Compartidos/saul/Cloned/saul/Degradome-analysis
+base_dir=/media/saul/Documentos/Shared/Cloned/saul/Degradome-analysis
 
 # Output dir
-output_dir_base=/media/saul/L-Drive/Bioinformatics/Degradome-${ibase}
+output_dir_base=/media/saul/Transcend1/Bioinformatics/Degradome-${ibase}
 
 # Report title
 doc_title="Degradome analysis of miR755 over-expressing lines"
 
 # Number of available threads
-cores=5
+cores=4
 
 # Sample names
-control_samples=("SRR3945024" "SRR3945025")
-control_samples_name=("At WT [1]" "At WT [2]")
-test_samples=("SRR103220401" "SRR103220402")
-test_samples_name=("At miR775a-ox [1]" "At miR775a-ox [2]")
+control_samples=("SRR3945024_6")
+control_samples_name=("At WT [1]")
+test_samples=("SRR10322040")
+test_samples_name=("At miR775a-ox [1]")
 isamples=("${test_samples[@]}" "${control_samples[@]}")
 
 # Comparison list (test control)
-pydeg_comp_list=("SRR103220401  SRR3945024" "SRR103220402  SRR3945025")
+pydeg_comp_list=("SRR10322040  SRR3945024_6")
 
 # PyDegradome settings (Confidence interval and Multiplicative factor)
 pydeg_script_settings=("0.95 4" "0.99 3" "0.95 2")
@@ -31,7 +31,7 @@ pydeg_script_settings=("0.95 4" "0.99 3" "0.95 2")
 Sp_base=Arabidopsis_thaliana.TAIR10
 sp=arabidopsis_thaliana
 ver=.55
-ich=2
+ich=5
 i_chr=.${ich}
 #chr_pref=.chromosome
 

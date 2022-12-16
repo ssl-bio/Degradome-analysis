@@ -70,7 +70,7 @@ then
 	fi
 
 	#Add the path to the downloaded file to the list of variables
-	echo "ref_miRNA="$outfile"" >> "${base_dir}"/Env_variables/Degradome_"${ibase}".txt
+	echo "ref_miRNA=$outfile" >> "${base_dir}"/Env_variables/Degradome_"${ibase}".txt
 
 	#Reload list of variables
 	source "${ivars}"

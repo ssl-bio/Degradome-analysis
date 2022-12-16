@@ -24,17 +24,16 @@ knitr::read_chunk("../05-Report_code.R")
 ```{r,summary,echo=FALSE}
 
 ```
-# List of candidate peaks per comparison
-### Classification results { - .tabset .tabset-pills}
-#### General classification {-}
+# List of candidate peaks per comparison { - .tabset .tabset-pills}
+## General classification {-}
 ```{r,general-classification,echo=FALSE}
 
 ``` 
-#### Classification (Metrics) {-} 
+## Classification (Metrics) {-} 
 ```{r,classification-metrics,echo=FALSE} 
 
 ``` 
-#### Coordinates {-} 
+## Coordinates {-} 
 ```{r,coordinates,echo=FALSE} 
 
 ``` 

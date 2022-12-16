@@ -17,15 +17,15 @@ else
 fi
 
 #Set variables
-cd Env_variables
+cd Env_variables || echo "Directory not found";
 
-VARS="`set -o posix ; set`"
+VARS="$(set -o posix ; set)"
 
-source ${2}
-echo "ibase=$ibase" > Degradome_${1}.txt
-echo "doc_title='$doc_title'" >> Degradome_${1}.txt
+source "$2"
+echo "ibase=$ibase" > Degradome_"$1".txt
+echo "doc_title='$doc_title'" >> Degradome_"$1".txt
 grep -vFe "$VARS" <<<"$(set -o posix ; set)" |
     grep -v ^VARS= | grep -vE "^BASH|^SHLVL" |
-    sed 's/\[[0-9]\]=//g' >> Degradome_${1}.txt
+    sed 's/\[[0-9]\]=//g' >> Degradome_"$1".txt
 
 unset VARS

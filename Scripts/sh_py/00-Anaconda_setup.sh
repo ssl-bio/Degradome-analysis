@@ -20,7 +20,6 @@ set -eo pipefail
 conda install -c bioconda bioawk fastqc trim-galore bedtools seqkit bowtie2 picard samtools biopython qualimap htseq deeptools salmon -y
 conda install -c bioconda agat -y
 conda install -c anaconda pandas pillow tk -y
-conda install -c conda-forge textwrap3 -y
 
 set +u
 conda deactivate
@@ -40,4 +39,4 @@ source activate pydeg_run
 
 conda install -c bioconda tophat viennarna unittest2 dendropy -y
 conda install -c anaconda pandas pillow tk -y
-conda install -c conda-forge textwrap3 -y
+

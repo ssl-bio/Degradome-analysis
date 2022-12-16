@@ -8,20 +8,20 @@
 #==================================================
 #function to test/make dirs
 dir_exist () {
-    if [[ ! -d $1 ]]
+    if [[ ! -d "$1" ]]
     then
-        mkdir -p $1
+        mkdir -p "$1"
     fi
 }
 
 # Import variables
-ivars=Env_variables/Degradome_${1}.txt
-if [[ ! -f ${ivars} ]]
+ivars=Env_variables/Degradome_"$1".txt
+if [[ ! -f "$ivars" ]]
 then
-    /bin/bash Scripts/sh_py/00-Variable_setup.sh ${1} ${2}
-    source ${ivars}
+    /bin/bash Scripts/sh_py/00-Variable_setup.sh "$1" "$2"
+    source "$ivars"
 else
-    source ${ivars}
+    source "$ivars"
 fi
 
 ##Step counter
@@ -29,9 +29,9 @@ stp=1
 
 # Create directories
 directory_list=("Annotation" "Compressed" "Fasta" "Index" "Others")
-for idir in ${directory_list[@]}
+for idir in "${directory_list[@]}"
 do
-    dir_exist Genetic_data/${idir}
+    dir_exist Genetic_data/"$idir"
 done
 
 # Get annotation files
@@ -39,72 +39,72 @@ done
 download_dir=Genetic_data/Compressed
 dest_dir=Genetic_data/Annotation
 
-file_base=${Sp_base}${ver}
+file_base="$Sp_base""$ver"
 formats=("gtf" "gff3")
-for iformat in ${formats[@]}
+for iformat in "${formats[@]}"
 do
-    dl_file=${download_dir}/${file_base}.${iformat}.gz
-    outfile=${dest_dir}/${file_base}.${iformat}
-    if [ ! -f ${dl_file} ] && [ ! -f ${outfile} ]
+    dl_file="$download_dir"/"$file_base"."$iformat".gz
+    outfile="$dest_dir"/"$file_base"."$iformat"
+    if [ ! -f "$dl_file" ] && [ ! -f "$outfile" ]
     then
 	echo "$stp - Get annotation for genome"
 	stp=$((stp+1))
-	wget http://ftp.ensemblgenomes.org/pub/current/plants/${iformat}/${sp}/${file_base}.${iformat}.gz -O ${dl_file}
-	gzip -dk < ${download_dir}/${file_base}.${iformat}.gz > ${outfile}
+	wget http://ftp.ensemblgenomes.org/pub/current/plants/"$iformat/$sp/$file_base"."$iformat".gz -O "$dl_file"
+	gzip -dk < "$download_dir"/"$file_base"."$iformat".gz > "$outfile"
     fi
 done
 
 # miRNA
 # Download list of organisms from www.mirbase.org
 miRNAsp_list=organisms.txt.gz
-if [ ! -f ${dest_dir}/${miRNAsp_list%.gz} ]
+if [ ! -f "$dest_dir"/"${miRNAsp_list%.gz}" ]
 then
     echo "$stp - Download list of organisms from www.mirbase.org"
-    wget https://www.mirbase.org/ftp/CURRENT/${miRNAsp_list} -O ${download_dir}/${miRNAsp_list}
-    gzip -dk < ${download_dir}/${miRNAsp_list} > ${dest_dir}/${miRNAsp_list%.gz}
+    wget https://www.mirbase.org/ftp/CURRENT/"$miRNAsp_list" -O "$download_dir"/"$miRNAsp_list"
+    gzip -dk < "$download_dir"/"$miRNAsp_list" > "$dest_dir"/"${miRNAsp_list%.gz}"
 
-    iSp=$(echo $sp | sed 's/_/ /' | sed -e 's/^./\U&\E/g')
-    read miRNAsp < <(awk -v sp="$iSp" 'BEGIN {FS="\t"} ; {if ($3 ~ sp) {print $1}}'\
-			 ${dest_dir}/${miRNAsp_list%.gz})
+    iSp=$(echo "$sp" | sed 's/_/ /' | sed -e 's/^./\U&\E/g')
+    read -r miRNAsp < <(awk -v sp="$iSp" 'BEGIN {FS="\t"} ; {if ($3 ~ sp) {print $1}}'\
+			 "$dest_dir"/"${miRNAsp_list%.gz}")
 
     # If the species was found download the file and add it to the list of variables
     if [[ ${miRNAsp:+1} ]]
     then
-	outfile=${dest_dir}/${miRNAsp}.gff3
+	outfile="$dest_dir"/"$miRNAsp".gff3
 
 	# Download miRNA sequences for the target species
-	if [ ! -f ${outfile} ]
+	if [ ! -f "$outfile" ]
 	then
 	    echo "$stp - Download miRNA sequences from www.mirbase.org"
 	    stp=$((stp+1))
-	    ifile=$(basename ${outfile})
-	    wget https://www.mirbase.org/ftp/CURRENT/genomes/${ifile} -O ${outfile}
+	    ifile=$(basename "$outfile")
+	    wget https://www.mirbase.org/ftp/CURRENT/genomes/"$ifile" -O "$outfile"
 	fi
 
 	#Add the path to the downloaded file to the list of variables
-	echo "ref_miRNA=$outfile" >> ${base_dir}/Env_variables/Degradome_${ibase}.txt
+	echo "ref_miRNA=$outfile" >> "$base_dir"/Env_variables/Degradome_"$ibase".txt
 
 	#Reload list of variables
-	source ${ivars}
+	source "$ivars"
 
 	# Check output dir
-	out_dir=${supp_data_dir}/miRNA_seq
-	out_dir_input=${out_dir}/input
-	out_dir_output=${out_dir}/output
+	out_dir="$supp_data_dir"/miRNA_seq
+	out_dir_input="$out_dir"/input
+	out_dir_output="$out_dir"/output
 
-	dir_exist ${out_dir_input}
-	dir_exist ${out_dir_output}
+	dir_exist "$out_dir_input"
+	dir_exist "$out_dir_output"
 
 	# Edit chromosome names annotation file and create bed file
-	sed  's/^chr//g' ${ref_miRNA} | \
-	    sed 's/^#.*$//g' | awk 'BEGIN{FS="\t";OFS="\t"} {if ($3=="miRNA"){print $1,$4-1,$5,$9,1000,$7}}' > ${out_dir_input}/miRNA.bed
+	sed  's/^chr//g' "$ref_miRNA" | \
+	    sed 's/^#.*$//g' | awk 'BEGIN{FS="\t";OFS="\t"} {if ($3=="miRNA"){print $1,$4-1,$5,$9,1000,$7}}' > "$out_dir_input"/miRNA.bed
 
 	# Get sequences from genomic fasta file
-	bedtools getfasta -fi ${At_genome} -bed ${out_dir_input}/miRNA.bed -name -s -fo ${out_dir_input}/miRNA.fa
+	bedtools getfasta -fi "$At_genome" -bed "$out_dir_input"/miRNA.bed -name -s -fo "$out_dir_input"/miRNA.fa
 
 	# Format fasta header to get only the name of the miRNA sequence
 	# Pipe into seqkit and remove duplicates
-	awk 'BEGIN {FS=";"}{if($1 ~ /^>/) {gsub("Name=","",$3);print ">",$3} else {print $0}}' ${out_dir_input}/miRNA.fa | seqkit rmdup -s > ${out_dir_input}/miRNA_sequences.fa
+	awk 'BEGIN {FS=";"}{if($1 ~ /^>/) {gsub("Name=","",$3);print ">",$3} else {print $0}}' "$out_dir_input"/miRNA.fa | seqkit rmdup -s > "$out_dir_input"/miRNA_sequences.fa
     fi
 fi
 
@@ -115,22 +115,22 @@ download_dir=Genetic_data/Compressed
 dest_dir=Genetic_data/Fasta
 
 # List should match the names in 
-fasta_list=("${Sp_base}.dna.toplevel.fa.gz"\
-       "${Sp_base}.cdna.all.fa.gz"\
-       "${Sp_base}.ncrna.fa.gz")
+fasta_list=("$Sp_base.dna.toplevel.fa.gz"\
+       "$Sp_base.cdna.all.fa.gz"\
+       "$Sp_base.ncrna.fa.gz")
 type_list=(dna cdna ncrna)
 outpath_list=("${At_genome}" "${At_transcript}" "${At_ncRNA}")
 
 END=$((${#fasta_list[@]}-1))
 for i in $(seq 0 $END)
 do
-    dl_file=${download_dir}/${fasta_list[i]}
-    if [ ! -f ${dl_file} ] || [ ! -f ${outpath_list[i]} ]
+    dl_file="$download_dir"/"${fasta_list[i]}"
+    if [ ! -f "$dl_file" ] || [ ! -f "${outpath_list[i]}" ]
     then
 	echo "$stp - Download sequence files: genome, cDNA, ncRNA"
 	stp=$((stp+1))
-	wget http://ftp.ensemblgenomes.org/pub/plants/current/fasta/${sp}/${type_list[i]}/${fasta_list[i]} -O ${dl_file}
-	gzip -dk < ${download_dir}/${fasta_list[i]} > ${outpath_list[i]}
+	wget http://ftp.ensemblgenomes.org/pub/plants/current/fasta/"$sp/${type_list[i]}/${fasta_list[i]}" -O "$dl_file"
+	gzip -dk < "$download_dir"/"${fasta_list[i]}" > "${outpath_list[i]}"
     fi
 done
 
