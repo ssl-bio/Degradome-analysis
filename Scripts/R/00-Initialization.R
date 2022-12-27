@@ -180,36 +180,57 @@ conf_list <- as.numeric(pydeg_settings[rep(c(TRUE, FALSE),
 names(control_samples) <- control_samples_name
 names(test_samples) <- test_samples_name
 
-idf <- expand.grid(test=test_samples,nc=control_samples)
-if (nrow(idf)==1) {
-    idf <- rbind(idf,idf)
+nc_pairs <- NULL
+test_pairs <- NULL
+for (i in seq_along(control_samples)) {
+  nc <- paste("t", control_samples[i],
+              "c", test_samples[i], sep = "_")
+  test <- paste("t", test_samples[i],
+                "c", control_samples[i], sep = "_")
+  
+  nc_pairs <- c(nc_pairs, nc)
+  test_pairs <- c(test_pairs, test)
 }
 comp_list <- list()
-for (i in seq_along(colnames(idf))) {
-    i.not <- seq_along(colnames(idf))[!seq_along(colnames(idf)) %in% i]
-    i.comp <- colnames(idf)[i]
-    i.comp_other <- colnames(idf)[i.not]
-    comp_list_sub <- NULL
-    for (j in seq_len(nrow(idf))) {
-        x <- paste("t", idf[j, i.comp],
-                   "c", idf[j, i.comp_other], sep="_")
-        comp_list_sub <- c(comp_list_sub, x)
-    }
-    comp_list[[i.comp]] <- comp_list_sub
-}
+comp_list[["test"]] <- test_pairs
+comp_list[["nc"]] <- nc_pairs
 
-tmp <- data.frame(sapply(comp_list, c))
-
-
-tmp2 <- list(as.data.frame(combn(tmp[["test"]], 2)),
-             as.data.frame(combn(tmp[["nc"]], 2)))
 comp_pair_list <- list()
-for (k in seq_along(tmp2[[1]])) {
-    comp_pair_list[[k]] <- list(test=paste(tmp2[[1]][, k],
-                                           collapse = "_and_"),
-                                nc=paste(tmp2[[2]][,k],
-                                         collapse = "_and_"))
-}
+comp_pair_list[["test"]] <- paste(test_pairs[-length(test_pairs)],
+                                  test_pairs[-1], sep = "_and_")
+comp_pair_list[["nc"]] <- paste(nc_pairs[-length(nc_pairs)],
+                                  nc_pairs[-1], sep = "_and_")
+## idf <- expand.grid(test=test_samples,nc=control_samples)
+## if (nrow(idf)==1) {
+##     idf <- rbind(idf,idf)
+## }
+
+## comp_list <- list()
+## for (i in seq_along(colnames(idf))) {
+##     i.not <- seq_along(colnames(idf))[!seq_along(colnames(idf)) %in% i]
+##     i.comp <- colnames(idf)[i]
+##     i.comp_other <- colnames(idf)[i.not]
+##     comp_list_sub <- NULL
+##     for (j in seq_len(nrow(idf))) {
+##         x <- paste("t", idf[j, i.comp],
+##                    "c", idf[j, i.comp_other], sep="_")
+##         comp_list_sub <- c(comp_list_sub, x)
+##     }
+##     comp_list[[i.comp]] <- comp_list_sub
+## }
+
+## tmp <- data.frame(sapply(comp_list, c))
+
+
+## tmp2 <- list(as.data.frame(combn(tmp[["test"]], 2)),
+##              as.data.frame(combn(tmp[["nc"]], 2)))
+## comp_pair_list <- list()
+## for (k in seq_along(tmp2[[1]])) {
+##     comp_pair_list[[k]] <- list(test=paste(tmp2[[1]][, k],
+##                                            collapse = "_and_"),
+##                                 nc=paste(tmp2[[2]][,k],
+##                                          collapse = "_and_"))
+## }
 
 treatments <- gsub(" \\[[0-9]\\]","",
                    c(names(control_samples),names(test_samples)))
