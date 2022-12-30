@@ -67,7 +67,9 @@ for (base_name in sample_list) {
     iext <- unlist(strsplit(ifile, "\\."))
     iext <- iext[length(iext)]
     if (iext == "tsv") {
-        idf <- read.table(file.path(opt$wd, ifile), header = FALSE)
+        idf <- read.table(file.path(opt$wd, ifile),
+                          comment.char = "_",
+                          header = FALSE)
         colnames(idf) <- c("ID", "Count")
         idf$ID <- gsub("transcript:", "", idf$ID)
     } else {
@@ -89,7 +91,7 @@ counts_data <- dplyr::select(counts_data,
 DESeq.ds <- DESeqDataSetFromMatrix(countData = counts_data,
                                    colData = columnData,
                                    design = ~treatment)
-DESeq.ds <- DESeq.ds[rowSums(counts(DESeq.ds)) > 0, ]
+DESeq.ds <- DESeq.ds[rowSums(counts(DESeq.ds)) > 10, ]
 DESeq.ds <- estimateSizeFactors(DESeq.ds)
 size.factor <- sizeFactors(DESeq.ds)
 

@@ -108,7 +108,7 @@ qc_loop() {
 	if [ ! -f "$outfile" ]
 	then
 	    #no-group = Disable grouping of bases for reads >50bp.
-	    fastqc --nogroup -o "$2" "$1/$ifastq"
+	    fastqc --nogroup -o "$2" "$ifastq"
 	fi
     done
 }
@@ -144,11 +144,11 @@ idir="02-fastq_Len-Trim-Q_filtered"
 dir_exist "$idir"
 for ifastq in "$idir_prev"/*.f?(ast)q?(.gz)
 do
-    readarray -d . -t strarr <<< "$ifastq"
+    ifile=$(basename "$ifastq")
+    readarray -d . -t strarr <<< "$ifile"
     fbase=${strarr[0]}
     if [ ! -f "$idir/$fbase"_trimmed.fq.gz ]
     then
-	ifile=$(basename "$ifastq")
 	trim_galore --cores "$cores" --gzip "$idir_prev/$ifile" --output_dir "$idir"
 	
     fi
@@ -209,10 +209,10 @@ idir="04_1-bam_genomic"
 dir_exist "$idir"
 for ifastq in "$idir_prev"/*.f?(ast)q?(.gz)
 do
-    # ifile=$(basename "$ifastq")
-    readarray -d . -t strarr <<< "$ifastq"
+    ifile=$(basename "$ifastq")
+    readarray -d . -t strarr <<< "$ifile"
     fbase=${strarr[0]}
-    outfile="$idir/${ifastq%.No-rRNA.fastq}".mapped_genome.bam
+    outfile="$idir/${ifile%.No-rRNA.fastq}".mapped_genome.bam
     if [ ! -f "$outfile" ]
     then
 	tophat --num-threads "$cores" --read-mismatches 2 \
@@ -220,7 +220,7 @@ do
 	       --GTF "$base_dir/$ref_gff" --min-intron-length 25 \
 	       --max-intron-length 3000  \
                --output-dir  "$idir/${ifile%.No-rRNA.fastq}" \
-	       "$base_dir/$bowtie_index_genome" "$idir_prev/$ifastq"
+	       "$base_dir/$bowtie_index_genome" "$idir_prev/$ifile"
 	ireads=$(cat "$idir/${ifile%.No-rRNA.fastq}"/align_summary.txt | grep Mapped | awk '{print $3}')
 	echo "$fbase", "$ireads" >> "$idir"/Log_reads.txt
 	
@@ -288,8 +288,8 @@ for isettings in "${pydeg_script_settings[@]}"
 do
     for icomparisons in "${pydeg_comp_list[@]}"
     do
-	icomp=("${icomparisons[@]}")
-	iset=("${isettings[@]}")
+	icomp=(${icomparisons[@]})
+	iset=(${isettings[@]})
 
 	#First comparison
 	outfile="$idir"/t_${icomp[0]}_c_${icomp[1]}_${iset[0]}_4_${iset[1]}
@@ -440,11 +440,11 @@ dir_exist "$idir"
 
 for ibam in "$idir_prev"/*.bam
 do
-    if [ ! -f "$idir/${ibam%.bam}"/qualimapReport.html ]
+    ifile=$(basename "$ibam")
+    if [ ! -f "$idir/${ifile%.bam}"/qualimapReport.html ]
     then
-	# ifile=$(basename "$ibam")
 	echo "Working on $ifile"
-	qualimap bamqc -bam "$idir_prev/$ibam"  -outdir "$idir/${ibam%.bam}"
+	qualimap bamqc -bam "$idir_prev/$ifile"  -outdir "$idir/${ifile%.bam}"
     fi
 done
 
@@ -463,8 +463,8 @@ do
     if [ ! -f "$outfile" ]
     then
 	nice htseq-count -f bam -s yes -t exon -i Parent -m intersection-strict -n "$cores" \
-	     --additional-attr=exon_number "$idir_prev/$ifile" "$base_dir/$ref_gff_rep" \
-	     -c "$outfile"
+	     --additional-attr=exon_number "$idir_prev/$ifile" "${base_dir}/$ref_gff_rep" \
+	     -c "${outfile}"
     fi
 done
 
@@ -475,10 +475,8 @@ set -u
 
 if [ ! -f  "$output_dirB/$idir/Size-factor.txt" ]
 then
-    inputfile1="$base_dir/Env_variables/minimal_variables_$ibase.RData"
-    inputfile2="$output_dir_base/Supporting_data/Initialization_variables.RData"
-    
-    if [ ! -f "$inputfile1" ] || [ ! -f "$inputfile2" ]
+    inputfile="${base_dir}/Env_variables/minimal_variables_${ibase}.RData"
+    if [ ! -f "${inputfile}" ]
     then
 	Rscript "$base_dir"/Scripts/R/00-Initialization.R \
 		-b "$ibase" \
@@ -549,7 +547,7 @@ dir_exist "$idir"
 for ibam in "$idir_prev"/*.bam
 do
     ifile=$(basename "$ibam")
-    isample="${ifile//\..*$/}"
+    isample=$(echo $ifile | sed 's/\..*$//')
     # Raw counts
     outfile="$idir"/${ifile%.mapped_*.bam}_G_r.bw
     if [ ! -f "$outfile" ]
@@ -608,7 +606,7 @@ dir_exist "$idir"
 for ibam in "$idir_prev"/*.bam
 do
     ifile=$(basename "$ibam")
-    isample="${ifile//\..*$/}"
+    isample=$(echo $ifile | sed 's/\..*$//')
     # Raw counts
     outfile="$idir/${ifile%.mapped_*.bam}"_Tx_r.bw
     if [ ! -f "$outfile" ]

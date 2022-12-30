@@ -34,7 +34,7 @@ ver=.55
 ich=5
 i_chr=.${ich}
 
-#Anaconda environments (Make sure the environments exist)
+# Anaconda environments (Make sure the environments exist)
 conda_pydeg_map=pydeg_map
 conda_pydeg_run=pydeg_run
 conda_pydeg_R=pydeg_R

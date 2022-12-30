@@ -95,12 +95,12 @@ if (!is.element("cores", names(env))) {
 }
 
 ## Input path
-                                        # output_1 list directories
+## output_1 list directories
 idirs <- list.dirs(env$output_dirB,
                    recursive  = FALSE,
                    full.names = FALSE)
 
-                                        # assign selected directories
+## assign selected directories
 input_df <- data.frame(ivars = c("bam_dir", "bam_tr_dir",
                                "bigwig_dir", "bigwig_dir", "pydeg_dir",
                                "htseq_dir"),
@@ -168,7 +168,7 @@ dir.create(maxP_dir)
 dir.create(pydeg_dplot_dir)
 dir.create(peakSeq_dir)
 dir.create(Rvarious_dir)
-                                        #--------------------------------------------------------------------
+##--------------------------------------------------------------------
 
 ## Settings used for PyDegradome analysis
 pydeg_settings <- unlist(strsplit(pydeg_script_settings, " "))
@@ -200,37 +200,6 @@ comp_pair_list[["test"]] <- paste(test_pairs[-length(test_pairs)],
                                   test_pairs[-1], sep = "_and_")
 comp_pair_list[["nc"]] <- paste(nc_pairs[-length(nc_pairs)],
                                   nc_pairs[-1], sep = "_and_")
-## idf <- expand.grid(test=test_samples,nc=control_samples)
-## if (nrow(idf)==1) {
-##     idf <- rbind(idf,idf)
-## }
-
-## comp_list <- list()
-## for (i in seq_along(colnames(idf))) {
-##     i.not <- seq_along(colnames(idf))[!seq_along(colnames(idf)) %in% i]
-##     i.comp <- colnames(idf)[i]
-##     i.comp_other <- colnames(idf)[i.not]
-##     comp_list_sub <- NULL
-##     for (j in seq_len(nrow(idf))) {
-##         x <- paste("t", idf[j, i.comp],
-##                    "c", idf[j, i.comp_other], sep="_")
-##         comp_list_sub <- c(comp_list_sub, x)
-##     }
-##     comp_list[[i.comp]] <- comp_list_sub
-## }
-
-## tmp <- data.frame(sapply(comp_list, c))
-
-
-## tmp2 <- list(as.data.frame(combn(tmp[["test"]], 2)),
-##              as.data.frame(combn(tmp[["nc"]], 2)))
-## comp_pair_list <- list()
-## for (k in seq_along(tmp2[[1]])) {
-##     comp_pair_list[[k]] <- list(test=paste(tmp2[[1]][, k],
-##                                            collapse = "_and_"),
-##                                 nc=paste(tmp2[[2]][,k],
-##                                          collapse = "_and_"))
-## }
 
 treatments <- gsub(" \\[[0-9]\\]","",
                    c(names(control_samples),names(test_samples)))
@@ -256,8 +225,8 @@ dg_bam_tr_list <- structure(file.path(bam_tr_dir,
                                              "_uni_sort.bam")),
                             names = sample_list)
 ##--------------------------------------------------
-##Build a transcript info data frame
-##Data frame with feature, start, stop, gene name information from biomaRt
+## Build a transcript info data frame
+## Data frame with feature, start, stop, gene name information from biomaRt
 tx_info_f <- file.path(Rvarious_dir,"Transcript_information.txt")
 if (!file.exists(tx_info_f)) {
     sp_split <- unlist(strsplit(env$sp,"_"))
@@ -295,7 +264,7 @@ if (!file.exists(tx_info_f)) {
     iannot_locus_yes <- iannot[iannot$tx_name!="", ]
     iannot_locus_yes$ID <- gsub("\\.[0-9]", "", iannot_locus_yes$tx_name)
 
-                                        # Create a Description column based on the entrezgene and interpro descriptions
+    ## Create a Description column based on the entrezgene and interpro descriptions
     ilog <- iannot_locus_yes$entrezgene_description == ""
     temp1 <- iannot_locus_yes[ilog, ]
     temp2 <- iannot_locus_yes[!ilog, ]
@@ -327,8 +296,8 @@ if (!file.exists(tx_info_f)) {
     df_dup <- tx_info[i.log.dup,]
     df_uniq <- tx_info[!i.log.dup,]
 
-                                        #work on genes with isoforms
-                                        #Add representative gene model
+    ## work on genes with isoforms
+    ## Add representative gene model
     dup_ID <- unique(df_dup$ID)
     df_np_list <- list()
     for(k in seq_along(dup_ID)) {
@@ -347,11 +316,11 @@ if (!file.exists(tx_info_f)) {
     }
     df_np <- do.call(rbind, df_np_list)
 
-                                        #work on genes without isoforms
-                                        #Add representative gene model
+    ## work on genes without isoforms
+    ## Add representative gene model
     df_uniq$rep_gene <- 1
 
-                                        #Merge dataframes and sort
+    ## Merge dataframes and sort
     tx_info <- rbind(df_np, df_uniq)
     tx_info <- tx_info[with(tx_info, order(tx_name)), ]
    
@@ -377,9 +346,6 @@ if (!file.exists(ensemblDB_file)) {
     DB <- ensemblDB_file
 }
 
-
-## Columns to round up
-## cols2round <- c("max_non_peak_ratio", "max_non_peak_ratio_2", "max.peak.scaled", "max.read.tx.scaled", "ratioPTx")
 
 ## Link to TAIR
 tair.prefix <- "<a  target=_blank href=https://www.arabidopsis.org/servlets/TairObject?type=locus&name="

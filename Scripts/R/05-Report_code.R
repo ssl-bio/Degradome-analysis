@@ -19,7 +19,7 @@ icon_size <- "25px"
 pydeg_input_f <- file.path(pydeg_pooled_dir,
                            paste("Pooled",
                                  i.conf_f, "4", i.MF, sep = "_"))
-##Columns for subset main df (tabs)
+## Columns for subset main df (tabs)
 cols.gen <- c(i.cols.export[1:7], i.cols.export[22], "PARE",
               i.cols.export[8:9], "TAIR", i.cols.export[10:11])
 cols.metrics <- c(i.cols.export[1:4],
@@ -80,8 +80,8 @@ for (i.comparison in levels(pydeg_all$comparison)) {
                 Nplots <- 5
             }
 
-            ##Sort dataframe by txRatio
-            pydeg_cat<- pydeg_cat[with(pydeg_cat,
+            ## Sort dataframe by txRatio
+            pydeg_cat <- pydeg_cat[with(pydeg_cat,
                                           order(category_1,
                                                 category_2,
                                                 -ratioPTx)), ]

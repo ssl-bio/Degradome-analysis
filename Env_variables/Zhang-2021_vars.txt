@@ -3,10 +3,10 @@
 # Make sure these variables are correct
 #----------------------------------------------------------------------
 # Input root directory
-base_dir=/media/particiones/Compartidos/saul/Cloned/saul/Degradome-analysis
+base_dir=/home/saul/Bioinformatics/Degradome-analysis
 
 # Output dir
-output_dir_base=/media/saul/L-Drive/Bioinformatics/Degradome-${ibase}
+output_dir_base=/media/saul/Ext_HDD/Degradome-${ibase}
 
 # Report title
 doc_title="Degradome analysis of miR755 over-expressing lines"
@@ -31,9 +31,8 @@ pydeg_script_settings=("0.95 4" "0.99 3" "0.95 2")
 Sp_base=Arabidopsis_thaliana.TAIR10
 sp=arabidopsis_thaliana
 ver=.55
-ich=2
+ich=5
 i_chr=.${ich}
-#chr_pref=.chromosome
 
 # Anaconda environments (Make sure the environments exist)
 conda_pydeg_map=pydeg_map

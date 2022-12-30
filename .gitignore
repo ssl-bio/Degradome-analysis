@@ -2,3 +2,5 @@ Env_variables/Previous/
 Env_variables/minimal*.RData
 *.RData
 Env_variables/Degradome*.txt
+Env_variables/*deb.txt
+Env_variables/*mint.txt

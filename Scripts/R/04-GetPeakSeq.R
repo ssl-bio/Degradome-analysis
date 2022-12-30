@@ -176,7 +176,7 @@ for (i in seq_along(MF_list)) {
                                     start = pydeg_sub_tx$i.start,
                                     end = pydeg_sub_tx$i.end)
  
-                                        # Write Fasta
+    ## Write Fasta file
     ## attach(pydeg_sub_tx)
     gr.tmp <- GRanges(seqnames = pydeg_sub_tx$tx_name,
                       ranges = IRanges(start = pydeg_sub_tx$i.start,
@@ -194,5 +194,4 @@ for (i in seq_along(MF_list)) {
     write2FASTA(gr.tmp,
                 file = out_file,
                 width = 50)
-    ## detach(pydeg_sub_tx)
 }

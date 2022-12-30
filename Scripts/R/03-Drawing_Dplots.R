@@ -3,7 +3,7 @@
 ## Description: Draws decay plots for all indentified peaks/genes. Two types of plots are drawn, one at the transcript level and another focusing on the peak area (40nt width, user-defined). Checks if the plots exist to avoid overwritting.
 
 
-##Libraries
+## Libraries
 suppressPackageStartupMessages(library(here))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(stringr))
@@ -61,10 +61,10 @@ if (file.exists(min_variables)) {
 }
 ##-------------------------------------------------------------------------
 
-                                        #Degradome BigWig
+## Degradome BigWig
 dg_bigwig_all <- list()
 for (i.sample in sample_list){
-                                        #Load bigWig
+    ## Load bigWig
     bigwig_f <- import(file.path(bigwig_dir,
                                  paste0(i.sample, "_G_f_DESeq.bw")))
     strand(bigwig_f) <- "+"
@@ -77,17 +77,17 @@ for (i.sample in sample_list){
 }
 names(dg_bigwig_all) <- names(sample_list)
 
-                                        #Define mart
+## Define mart
 mart <- useMart(dataset = "athaliana_eg_gene", biomart = "plants_mart",
                 host = "plants.ensembl.org")
 
 At_genome_seq <- readDNAStringSet(env$At_genome)
 ##--------------------------------------------------
 
-##Transcript
+## Transcript
 txdb <- loadDb(file.path(env["supp_data_dir"], "R/txdb_object"))
 
-                                        # Transcript range
+## Transcript range
 tr_range <- GenomicFeatures::transcripts(txdb)
 ##--------------------------------------------------
 
@@ -100,22 +100,20 @@ for (i in seq_along(MF_list)) {
     if (!file.exists(input_file)) {
         next
     }
-    ## if (file.exists(input_file)) {
 
     ## Read pydeg input file
     pydeg_all <- fread(input_file)
     pydeg_all$comparison <- as.factor(pydeg_all$comparison)
+
     ##Loop over all comparisons
     pydeg_all_list <- list()
     for (i.comparison in levels(pydeg_all$comparison)) {
-                                        #Subset comparison
+        ##Subset comparison
         pydeg_sub <- pydeg_all[comparison == i.comparison,]
 
         if (is.null(pydeg_sub) || nrow(pydeg_sub)==0) {
             next
         }
-        ## if (!is.null(pydeg_sub) && nrow(pydeg_sub)>0) {
-                                        #Get comparison between samples
         i.samples <- unlist(strsplit(gsub("_and_", "-", i.comparison),
                                      split = "-"))
         i.samples2 <- NULL
@@ -167,7 +165,6 @@ for (i in seq_along(MF_list)) {
             if (is.null(pydeg_plot) || nrow(pydeg_plot) == 0) {
                 next
             }
-            ## if (!is.null(pydeg_plot) && nrow(pydeg_plot) > 0) {
             cat_label <- paste(cat_df[j.row, "Var1"],
                                cat_df[j.row, "Var2"], sep = "-")
 
@@ -236,7 +233,6 @@ for (i in seq_along(MF_list)) {
             if (sum(gene.sel) == 0) {
                 next
             }
-            ## if (sum(gene.sel) > 0) {
             df_plot$file <- my.gene.plots
             df_plot_gene <- df_plot[gene.sel, ]
             cl <- makeCluster(as.numeric(env$core))
@@ -292,7 +288,6 @@ for (i in seq_along(MF_list)) {
                 }#[Plot] For each
             stopCluster(cl)
             gc()
-            ## }
 
             ## Ploting peak region
             my.peak.plots <- file.path(plot_subdir_peak,
@@ -313,7 +308,6 @@ for (i in seq_along(MF_list)) {
             if (sum(peak.sel) == 0) {
                 next
             }
-            ## if (sum(peak.sel) > 0) {
             df_plot$file <- my.peak.plots
             df_plot_peak <- df_plot[peak.sel, ]
             cl <- makeCluster(as.numeric(env$core))
@@ -375,9 +369,6 @@ for (i in seq_along(MF_list)) {
                 }#[Plot] For each
             stopCluster(cl)
             gc()
-            ## }
-
-            ## }
         }
         ## }# if isn't null pydeg_sub
     }# Loop over comparions

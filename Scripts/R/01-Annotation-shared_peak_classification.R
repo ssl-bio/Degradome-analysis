@@ -64,8 +64,8 @@ if (file.exists(min_variables)) {
     break
 }
 ##-------------------------------------------------------------------------
-##Load files
-##Import file with transcript information
+## Load files
+## Import file with transcript information
 txdb <- loadDb(file.path(env["supp_data_dir"], "R/txdb_object"))
 
 annoData.gmodel <- toGRanges(txdb, feature = c("geneModel"))
@@ -92,7 +92,7 @@ for (i.sample in sample_list) {
     dg_bigwig_all[[i.sample]] <- c(bigwig_f,bigwig_r)
 }
 
-##Columns to order data frame before exporting
+## Columns to order data frame before exporting
 cols.indx <- c("ID",
                "chr",
                "strand",
@@ -111,7 +111,6 @@ cat("* Add information to peaks, associated transcript and feature\n")
 for (i in seq_along(MF_list)) {
     i.MF <- MF_list[i]
     i.conf <- conf_list[i]
-    ## for (i.test in c("test", "nc")) {
     for (i.comp in comparisons) {
         i.test <- gsub("[0-9]+","",names(i.comp))
         ## Directory for output
@@ -129,7 +128,6 @@ for (i in seq_along(MF_list)) {
         if (file.exists(out_file) || ! file.exists(input_file)) {
             next
         }
-        ## if (!file.exists(out_file) && file.exists(input_file)) {
         dir.create(out_dir)
 
         cat("\tProcessing ", i.comp, "...\n")
@@ -196,7 +194,7 @@ for (i in seq_along(MF_list)) {
         df_dup <- dfs.ID$df_dup
         df_uniq <- dfs.ID$df_uniq
 
-                                        # Work on genes with isoforms
+        ## Work on genes with isoforms
         dup_indx <- unique(df_dup$indx)
         df_np_list <- list()
         for(k in seq_along(dup_indx)) {
@@ -207,7 +205,7 @@ for (i in seq_along(MF_list)) {
                 temp_df <- temp_df[i.log,]
                 temp_df$rep_gene_note <- "Matches"
             } else {
-                                        #pick the first entry and add note
+                ## Pick the first entry and add note
                 temp_df <- temp_df[1,]
                 temp_df$rep_gene_note <- "Doesn't match"
             }
@@ -235,16 +233,17 @@ for (i in seq_along(MF_list)) {
                             "Description")),
             by = "tx_name", all.x  = TRUE)
 
-        ## Remove entries with NAs
+        ## Remove entries with NAs and sort
         df_annotated <- df_annotated[complete.cases(df_annotated),]
-
+        df_annotated <- df_annotated[with(df_annotated,
+                                          order(tx_name,
+                                                peak_start)), ]
+        
         write.table(df_annotated,
                     out_file ,
                     sep = "\t",row.names  = FALSE)
         cat("\t\tSaved as", basename(out_file), "\n")
-        ## }# Test for input and output
     }#i.comp
-    ## } #i.test
 }# Loop over pydeg settings
 ##---------------------------------------------------
 ## Create a dataframe with non peak coordinates
@@ -253,7 +252,6 @@ cat("* Create a dataframe with non peak coordinates\n")
 for (i.comp in comparisons) {
     i.test <- gsub("[0-9]+","",names(i.comp))
     ## for(i.test in c("test", "nc")) {
-    ##     for(i.comp in comp_list[[i.test]]) {
     for (i in seq_along(MF_list)) {
         i.MF <- MF_list[i]
         i.conf <- conf_list[i]
@@ -262,7 +260,7 @@ for (i.comp in comparisons) {
         i.conf_f <- gsub("\\.", "_",i.conf)
         file.suffix <- paste(i.comp_f, i.conf_f, "4", i.MF, sep = "_")
 
-                                        #Read data frame
+        ## Read data frame
         out_file <- file.path(pydeg_np_dir,
                               paste("NP_coordinates", i.comp_f,
                                     i.conf_f, "4", i.MF, sep = "_"))
@@ -272,26 +270,24 @@ for (i.comp in comparisons) {
         if (file.exists(out_file) || ! file.exists(input_file)) {
             next
         }
-        ## if(!file.exists(out_file) && file.exists(input_file)) {
-        ## if(file.exists(input_f)) {
         cat("\tMF = ",i.MF, " conf = ", i.conf, " Set = ", i.test, "\n")
         df <- read.table(input_file, header = TRUE)
-
-                                        # Select only complete cases and
-                                        # those entries with ID                        
+        
+        ## Select only complete cases and
+        ## those entries with ID                        
         df.ID <- df[grepl("^AT",df$ID),]
 
-                                        #Sort based on peak_start
+        ## Sort based on peak_start
         df.sort <- df.ID[with(df.ID, order(ID, peak_start)),]
 
-                                        #Create a indx vector
+        ## Create a indx vector
         df.sort$indx_dup <-  paste0(df.sort$ID,
                                     df.sort$chr,
                                     df.sort$strand,
                                     df.sort$gene_region_start,
                                     df.sort$gene_region_end)
 
-                                        #Count and select duplicated entries
+        ## Count and select duplicated entries
         dfs.ID <- SplitDFbyNpeaks(df.sort, "indx_dup")
         df_dup <- dfs.ID$df_dup
         dup_ID <- unique(df_dup$tx_name)
@@ -336,10 +332,7 @@ for (i.comp in comparisons) {
         write.table(df_np, out_file,
                     sep = "\t", row.names = FALSE, quote = FALSE )
         cat("\t\tSaved as", basename(out_file), "\n")
-        ## } # Check for input and output
     } # Loop over pydeg settings
-    ##     }#i.comp (test and ctl)
-    ## }#i.test
 }
 ##--------------------------------------------------
 ## Calculate ratio between peak reads and reads outside the peak region (signal:noise)
@@ -350,8 +343,6 @@ for (i in seq_along(MF_list)) {
     i.conf <- conf_list[i]
     for (i.comp in comparisons) {
         i.test <- gsub("[0-9]+","",names(i.comp))
-        ## for(i.test in c("test", "nc")) {
-        ##     for(i.comp in comp_list[[i.test]]) {
         i.comp_f <- mgsub::mgsub(i.comp,c("t_", "_c_"), c("", "-"))
         i.conf_f <- gsub("\\.", "_",i.conf)
         out_dir <- file.path(pydeg_processed_dir,i.comp_f)
@@ -363,8 +354,6 @@ for (i in seq_along(MF_list)) {
         if (file.exists(out_file) || ! file.exists(input_file)) {
             next
         }
-        ## if (!file.exists(out_file) && file.exists(input_file)) {
-
         cat("\tMF = ",i.MF, " conf = ", i.conf, " Set = ", i.test, "\n")
         cat("\t\tLoading", basename(input_file), "\n")
         cat("\t\tProcessing ",i.comp, "...\n")
@@ -382,10 +371,10 @@ for (i in seq_along(MF_list)) {
         ##--------------------------------------------------
         cat("Check ref & Add highest signal outside of the peak region\n")
         ##--------------------------------------------------
-                                        #Subset entries with ID
+        ## Subset entries with ID
         df.ID <- df[grepl("^AT", df$ID), ]
 
-                                        #Create indx_dup to select duplicates
+        ## Create indx_dup to select duplicates
         df.ID$indx_dup <-  paste0(df.ID$ID,
                                   df.ID$chr,
                                   df.ID$strand,
@@ -395,12 +384,11 @@ for (i in seq_along(MF_list)) {
         dfs.ID <- SplitDFbyNpeaks(df.ID, "indx_dup")
         df_dup <- dfs.ID$df_dup
         df_uniq <- dfs.ID$df_uniq
-        ## if(nrow(df_dup) > 0)
         if (!is.null(df_dup) && nrow(df_dup) > 0) {
             ##==================================================
             cat("Calculating max signal outside peak  (Peaks 2+)...\n")
 
-                                        # Import bigwig data based on i.comp variable
+            ## Import bigwig data based on i.comp variable
             sample_name <- SampleName(i.comp)
             bigwig <- dg_bigwig_all[[sample_name]]
             ##--------------------------------------------------
@@ -436,17 +424,16 @@ for (i in seq_along(MF_list)) {
                                                core = env$core)
             pydeg_np_gene <- pydeg_np_gene[!is.na(pydeg_np_gene$ID), ]
             ##--------------------------------------------------
-                                        #Remove i.cols and bigwig
+            ## Remove i.cols and bigwig
             rm(bigwig)
             cat("\tFinished calculating max signal outside peak (Peaks 2+)\n")
             ##==================================================
             cat("\tAdding max_non_peak_gene to original data frame (df_dup)...\n")
-                                        #Remove duplicates
+            ## Remove duplicates
             pydeg_np_gene <- unique(pydeg_np_gene)
             df_dup <- MergeDFs(dfA = df_dup,
                                dfB = pydeg_np_gene,
                                ref_col = "max_np_gene")
-            ## df_dup <- dplyr::select(df_dup, -indx_dup)
             cat("Finish adding max_non_peak_gene to original data frame\n")
         } else {
             df_dup <- NULL
@@ -455,7 +442,6 @@ for (i in seq_along(MF_list)) {
         cat("\t\tCalculating Max Non Peak (Peaks 1)...\n")
         if(nrow(df_uniq) > 0) {
             df_uniq <- checkNonPeakRefOne(df_uniq, i.comp, cols.indx)
-            ## df_uniq <- dplyr::select(df_uniq, -indx_dup)
         } else {
             df_uniq <- NULL
         }
@@ -472,7 +458,7 @@ for (i in seq_along(MF_list)) {
 
         df <- rbind(df_dup, df_uniq, df.NonID)
 
-                                        #Change np_gene if 0 to 1 to avoid inf
+        ## Change np_gene if 0 to 1 to avoid inf
         df <- as.data.table(df)
         df[max_np_gene == 0, max_np_gene := 1]
         ##--------------------------------------------------
@@ -480,14 +466,13 @@ for (i in seq_along(MF_list)) {
         cat("Calculate max_non_peak_ratio\n")
         df$max_non_peak_ratio <- df$max_peak / df$max_np_gene
 
-        ## Save table
+        ## Sort and save table
+        df <- df[with(df, order(tx_name,
+                            peak_start)), ]
         cat("Save table \n")
         write.table(df, out_file,
                     sep = "\t", row.names = FALSE)
         cat("\t\tSaved as", basename(out_file), "\n")
-        ## }# Test for input and output file
-        ##     } # i.comp
-        ## } # i.test
     } 
 } # Loop over pydeg settings
 ##--------------------------------------------------
@@ -504,7 +489,7 @@ for (i in seq_along(MF_list)) {
     i.conf_f <- gsub("\\.", "_", i.conf)
     for (i.test in c("test", "nc")) {
         for (i.comp in comp_list[[i.test]]) {
-            ##Generate lists from pyDegradome output for comparing pairs
+            ## Generate lists from pyDegradome output for comparing pairs
             cat("\t** Generate lists from pyDegradome output for comparing pairs\n")
             cat("\tMF = ", i.MF, " conf = ", i.conf, " Set = ", i.test, "\n")
             i.comp_f <- mgsub::mgsub(i.comp, c("t_", "_c_"), c("", "-"))
@@ -514,11 +499,10 @@ for (i in seq_along(MF_list)) {
             input_file <- file.path(out_dir,
                                     paste0(file.suffix, "_Processed"))
 
-                                        #Test if pydeg_processed_f exists
+            ## Test if pydeg_processed_f exists
             if (!file.exists(input_file)) {
                 next
             }
-            ## if (file.exists(input_file)) {
             df <- fread(input_file)
 
             ##Peak number
@@ -541,15 +525,13 @@ for (i in seq_along(MF_list)) {
             ##Keep raw input + width, annotation) as data.frame for filtering later.
             cat("Keep raw input + width \n")
             pydeg_list[[i.comp]] <- df
-            ## }# if pydeg_processed_f exists
         } #i.comp
-        ##[end] Calculate peak width
         ##--------------------------------------------------
         names(peak_range_list) <- mgsub::mgsub(names(peak_range_list),
                                                c("t_", "_c_"), c("", "-"))
         ##--------------------------------------------------
 
-        ##Filter pyDegradome results by shared peak between replicates
+        ## Filter pyDegradome results by shared peak between replicates
         cat("\t** Filter pyDegradome results by shared peak\n")
         ## Get unique combinations of pairs
         tmp1 <- mgsub::mgsub(comp_list[[i.test]], c("t_", "_c_"), c("", "-"))
@@ -570,8 +552,6 @@ for (i in seq_along(MF_list)) {
                 next
             }
             
-            ## if(!file.exists(out_file)) {
-
             cat("\t\tGenerating, ",
                 basename(out_file),  "\n")
             i.file1 <- paste(file.path(pydeg_processed_dir, i_pair1, i_pair1),
@@ -583,10 +563,9 @@ for (i in seq_along(MF_list)) {
             if(!file.exists(i.file1) || !file.exists(i.file2)) {
                 next
             }
-            ## if(file.exists(i.file1) && file.exists(i.file2)) {
 
             cat("\t\tFinding overlaps \n")
-                                        #Get overlapped peaks between 2 samples
+            ## Get overlapped peaks between 2 samples
             overlaps <- findOverlaps(#
                 peak_range_list[[i_pair1]],
                 peak_range_list[[i_pair2]],
@@ -594,17 +573,16 @@ for (i in seq_along(MF_list)) {
             if (is.null(overlaps) || length(overlaps)==0) {
                 next
             }
-            ## if (!is.null(overlaps) && length(overlaps)>0) {
             icols <- c("max_np_gene",
                        "max_peak", "max_non_peak_ratio",
                        "max_count_test")
-                                        #Comparisons tested
+            ## Comparisons tested
             i.comp_list <- list(#
                 i.comp1 = i_pair1,
                 i.comp2 = i_pair2
             )
 
-                                        #Indices of overlap peaks
+            ## Indices of overlap peaks
             sel_list <- list(
                 sel1 = queryHits(overlaps),
                 sel2 = subjectHits(overlaps)
@@ -660,11 +638,12 @@ for (i in seq_along(MF_list)) {
 
                     cat("\t\tCalculating max signal outside peak  (Peaks 2+)...\n")
 
-                                        # Import bigwig data based on i.comp variable
+                    ## Import bigwig data based on i.comp variable
                     sample_name <- SampleName(i.comp.other)
                     bigwig <- dg_bigwig_all[[sample_name]]
-                                        #Calculate read outside peak
-                                        #Region-wise
+
+                    ## Calculate read outside peak
+                    ## Region-wise
                     cat("\t\tCalculating max signals outside peak (Region-wise)...\n")
                     ## Set i.comp to sample 2 to load coordinates of non-peaks
                     pydeg_np_region_f <- file.path(#
@@ -687,20 +666,20 @@ for (i in seq_along(MF_list)) {
                         i.comp = i.comp.other,
                         core = env$core)
                     cat("\t\tFinished calculating max signals outside peak (Region-wise)\n")
-                                        #Vector of unique IDs to loop
+                    ## Vector of unique IDs to loop
                     dup_ID <- unique(df_dup$tx_name) #ID
-                                        #Calculate read outside peak
-                                        #Gene-wise
+                    ## Calculate read outside peak
+                    ## Gene-wise
                     cat("\t\tCalculating max signals outside peak (Gene-wise)...\n")
                     pydeg_np_gene <- addMaxNonPeakGene(#
                         pydeg_np_region, dup_ID, core = env$core)
                     ##--------------------------------------------------
-                                        #Remove i.cols and bigwig
+                    ## Remove i.cols and bigwig
                     rm(bigwig)
                     cat("\t\tFinished calculating max signal outside peak  (Peaks 2+)\n")
                     ##==================================================
                     cat("\t\tAdding max_non_peak_gene to original data frame (df_dup)...\n")
-                                        #Remove duplicates
+                    ## Remove duplicates
                     df_np_gene <- unique(pydeg_np_gene)
                     df_dup <- MergeDFs(dfA = df_dup,
                                        dfB = df_np_gene,
@@ -717,17 +696,16 @@ for (i in seq_along(MF_list)) {
                         df_uniq,
                         i.comp = i.comp.other,
                         cols.indx)
-                    ## df_uniq <- dplyr::select(df_uniq, -indx_dup)
                 } else {
                     df_uniq <- NULL
                 }
                 cat("\t\tFinished calculating Max Non Peak (Peaks 1)\n")
                 ##==================================================
-                ##Merging all the dataframes in to the original df
+                ## Merging all the dataframes in to the original df
                 cat("\t\tMerging dataframes...\n")
                 pydegSingleRep_peak  <- rbind(df_dup,df_uniq)
 
-                ##Change np_gene if 0 to 1 to avoid inf
+                ## Change np_gene if 0 to 1 to avoid inf
                 setDT(pydegSingleRep_peak)
                 pydegSingleRep_peak[max_np_gene == 0,
                                     max_np_gene := 1]
@@ -767,12 +745,12 @@ for (i in seq_along(MF_list)) {
                               all_of(paste(icols, "2", sep = "_"))))
             pydeg_shared_peak$shared <- 3
 
-                                        # width takes average of both samples
+            ## Width takes average of both samples
             pydeg_shared_peak$width <- rowMeans(cbind(#
                 pydegShared_peak_list[[1]][["width"]],
                 pydegShared_peak_list[[2]][["width"]]))
 
-                                        # remove indx column
+            ## Remove indx column
             isel <- colnames(pydeg_shared_peak) %in%
                 colnames(pydeg_single_peak)
             pydeg_shared_peak <- pydeg_shared_peak[, isel]
@@ -786,9 +764,13 @@ for (i in seq_along(MF_list)) {
             pair_comparison <- paste(pairs_comb_uniq[i.pair, 1],
                                      "and",
                                      i_pair2, sep = "_")
+
+            pydeg_all_peak <- pydeg_all_peak[with(pydeg_all_peak,
+                                                  order(tx_name,
+                                                        peak_start)), ]
             write.table(pydeg_all_peak,
                         out_file, sep = "\t", row.names = FALSE)
-            ##Peak number
+            ## Peak number
             cat("\t\tPeak number \n")
             peak_num_df <- rbind(peak_num_df,
                                  data.frame(
@@ -797,14 +779,11 @@ for (i in seq_along(MF_list)) {
                                      mf = i.MF,
                                      test_type = i.test,
                                      comp_pair = pair_comparison))
-            ## }#If there are overlaps
-            ## }# if both files exists pair_df 1&2
-            ## }#if pydeg_pairs_comparison_f exists
         }#i.pair
     } #i.test
 } # Loop over pydegradome settings
 ##--------------------------------------------------
-##Save peak number table.
+## Save peak number table.
 peak_num_df <- unique(peak_num_df)
 write.table(peak_num_df, file.path(summary_dir, "Annotated_peak_number"),
             sep = "\t", row.names = FALSE, quote = FALSE)

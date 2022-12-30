@@ -58,10 +58,10 @@ if (file.exists(min_variables)) {
     break
 }
 ##--------------------------------------------------
-                                        # Degradome BigWig
+## Degradome BigWig
 dg_bigwig_all <- list()
 for (i.sample in sample_list) {
-                                        #Load bigWig
+    ## Load bigWig
     bigwig_f <- import(file.path(bigwig_dir, paste0(i.sample, "_G_f_DESeq.bw")))
     strand(bigwig_f) <- "+"
 
@@ -70,18 +70,24 @@ for (i.sample in sample_list) {
 
     dg_bigwig_all[[i.sample]] <- c(bigwig_f, bigwig_r)
 }
-                                        # Transcript
+## Transcript
 txdb <- loadDb(file.path(env["supp_data_dir"], "R/txdb_object"))
 tr_range <- GenomicFeatures::transcripts(txdb)
 
-                                        #Columns for index & comparison
-i.cols.indx  <- c("tx_name",
+## Columns for index & comparison
+cols_indexP  <- c("tx_name",
                   "chr",
                   "strand",
                   "peak_start",
                   "peak_stop")
 
-                                        # lists for summarizing peak counts
+cols_indexG  <- c("tx_name",
+                  "chr",
+                  "strand",
+                  "gene_region_start",
+                  "gene_region_end")
+
+## lists for summarizing peak counts
 list.peak.cat1.counts <- list()
 list.peak.cat2.counts <- list()
 list.peak.counts <- list()
@@ -89,14 +95,11 @@ list.peak.counts <- list()
 ## Vector of comparisons
 comparisons <- unlist(comp_list)
 
-## for (k in seq_along(comp_pair_list)) {
-##     comp_list <- comp_pair_list[[k]]
 for (comp_list in comp_pair_list) {
     comparisons <-  unlist(comp_list)
     for (i.comp in comparisons) {
-        i.test <- gsub("[0-9]+","",names(i.comp))
-        ## for (i.test in c("test", "nc")) {
-        ##     for (i.comp in comp_list[[i.test]]) {
+        i.test <- gsub("[0-9]+", "", names(i.comp))
+
         for (i in seq_along(MF_list)) {
             i.MF <- MF_list[i]
             i.conf <- conf_list[i]
@@ -112,8 +115,7 @@ for (comp_list in comp_pair_list) {
             if (file.exists(out_file) || ! file.exists(input_file)) {
                 next
             }
-            ## if (!file.exists(out_file) && file.exists(input_file)) {
-            cat("Filtering and Classification 1")
+            cat("Filtering and Classification 1\n")
             cat("\tMF = ", i.MF, " conf = ", i.conf, " Set = ",  i.test, "\n")
             pydeg <- fread(input_file,
                            stringsAsFactors = FALSE,
@@ -138,7 +140,8 @@ for (comp_list in comp_pair_list) {
                             !is.na(pydeg$max_non_peak_ratio_2), ]
 
             ## Filter by width and max_peak count
-            ## pydeg2 <- pydeg2[pydeg2$max_peak_1 > max_peak_thr & pydeg2$max_peak_2 > max_peak_thr & pydeg2$width < peak_width_thr, ]
+            ## pydeg2 <- pydeg2[pydeg2$max_peak_1 > max_peak_thr & pydeg2$max_peak_2 > max_peak_thr &
+            ## pydeg2$width < peak_width_thr, ]
             pydeg2 <- pydeg2[pydeg2$max_peak_1 > max_peak_thr &
                              pydeg2$max_peak_2 > max_peak_thr, ]
 
@@ -175,14 +178,7 @@ for (comp_list in comp_pair_list) {
             pydeg2[is.na(category_1), category_1:= 0 ]
 
             ## ------------------------------
-            ## Add miRNA info
-            ## sel  <- pydeg2$ID %in% mirna$ID
-
-            ## pydeg2$miRNA <- 0
-
-            ## pydeg2[sel, miRNA := 1]
-            ##------------------------------
-            cat("Classification 2\n")
+              cat("Classification 2\n")
             i.samples <- unlist(strsplit(gsub("_and_", "-", i.comp_f),
                                          split = "-"))
             ## control samples
@@ -200,19 +196,29 @@ for (comp_list in comp_pair_list) {
 
             bigwigs <- dg_bigwig_all[sel_bam]
 
+            ## Subsample with only relevant columns
+            
+
             ## Get max transcript ctrl
             cat("Get the highest signal in the control sample\n")
-
+            gene_df <- dplyr::select(pydeg2, all_of(cols_indexG))
+            gene_df <- within(gene_df,
+                              indx <- paste(tx_name,
+                                            chr,strand,
+                                            gene_region_start,
+                                            gene_region_end,
+                                            sep = ""))
+            isel <- !duplicated(gene_df$indx)
+            gene_df <- gene_df[isel, ]
             ## Select transcripts from which to obtain
             ## the highest read over the transcript
-            pydeg_tx <- unique(pydeg2$tx_name)
-            sel_tx <- tr_range$tx_name %in% pydeg_tx
-            gr_tr <- tr_range[sel_tx, ]
+            ## pydeg_tx <- unique(pydeg2$tx_name)
+            ## sel_tx <- tr_range$tx_name %in% pydeg_tx
+            ## gr_tr <- tr_range[sel_tx, ]
 
-            maxTxctrl_list <- maxTxctrl(tx_id = pydeg_tx,
-                                        f_bigwigs = bigwigs[i.pairs.ctrl],
+            maxTxctrl_list <- maxTxctrl(f_df = gene_df,
                                         f_pairs = i.pairs.ctrl,
-                                        f_gr_tr = gr_tr,
+                                        f_bigwigs = bigwigs[i.pairs.ctrl],
                                         f_input_dir = maxR_dir,
                                         f_core = env$cores)
             maxTxctrl_df <- do.call(rbind, maxTxctrl_list)
@@ -220,10 +226,10 @@ for (comp_list in comp_pair_list) {
                                       data = maxTxctrl_df,
                                       mean)
             ##--------------------------------------------------
-            ##Get max peak test
+            ## Get max peak test
             cat("Get the peak signal in the test sample\n")
-            mydf <- dplyr::select(pydeg2, all_of(i.cols.indx))
-            maxPeakTest_list  <- maxPtest(f_df = mydf,
+            peak_df <- dplyr::select(pydeg2, all_of(cols_indexP))
+            maxPeakTest_list  <- maxPtest(f_df = peak_df,
                                           f_pairs=i.pairs.test,
                                           f_bigwigs=bigwigs[i.pairs.test],
                                           f_input_dir = maxP_dir,
@@ -242,7 +248,7 @@ for (comp_list in comp_pair_list) {
                                         mean)
 
             ##-----------------------------------
-            ##Merge by TxID and calculate ratio
+            ## Merge by TxID and calculate ratio
             cat("Calculate ratio Peak[test]:MaxRead[ctrl]\n")
 
             ## split indx to get Tx.id
@@ -291,7 +297,7 @@ for (comp_list in comp_pair_list) {
 
             pydeg2$MorePeaks <- as.numeric(sel)
 
-            ##Convert to data.table
+            ## Convert to data.table
             pydeg2 <- as.data.table(pydeg2)
             ##--------------------------------------------------
             ## Classify into categories
@@ -312,7 +318,10 @@ for (comp_list in comp_pair_list) {
             pydeg2[is.na(category_2), category_2 := "C"]
 
             ##--------------------------------------------------
-            ## Write filtered pydeg data frame
+            ## Sort and write filtered pydeg data frame
+            pydeg2 <- pydeg2[with(pydeg2,
+                                  order(tx_name,
+                                        peak_start)), ]
             fwrite(pydeg2, out_file, quote = FALSE, sep = "\t")
             cat("\t\tWrote",
                 paste(i.comp_f, i.conf_f, "4", i.MF, sep = "_"), "\n")
@@ -353,8 +362,6 @@ for (comp_list in comp_pair_list) {
             ## }# Check for input and output
             gc()
         }# Loop over pydeg settings
-        ##     }#i.comp
-        ## }#Loop over test and negative control
     }
 }
 ##Merge peak counts and export
@@ -422,11 +429,6 @@ for (i in seq_along(MF_list)) {
         comparisons <-  unlist(comp_list)
         for (i.comp in comparisons) {
             i.test <- gsub("[0-9]+","",names(i.comp))
-            ## for (k in seq_along(comp_pair_list)) {
-            ##     comp_list <- comp_pair_list[[k]]
-            
-            ## for (i.test in c("test", "nc")) {
-            ##     for (i.comp in comp_list[[i.test]]) {
             i.comp_f <- mgsub::mgsub(i.comp, c("t_", "_c_"), c("", "-"))
             pydeg_input_f <-  file.path(pydeg_pooled_dir,
                                         paste0("Classification_",
@@ -436,21 +438,22 @@ for (i in seq_along(MF_list)) {
                                                    "4", i.MF,
                                                    sep = "_")))
 
-            ## if (!file.exists(pydeg_ouput_f)) {
             if (file.exists(pydeg_input_f)) {
                 pydeg <- fread(pydeg_input_f)
 
-                                        #Add comparison column
+                ## Add comparison column
                 pydeg$comparison <- i.comp_f
 
-                                        #combine data simplified data
+                ## Combine data simplified data
                 pydeg_all <- rbind(pydeg_all, pydeg)
-                ## }
             }
         }
     }
-                                        #Data table with less columns
+    ## Sort and write data table with less columns
     if (!is.null(pydeg_all) && nrow(pydeg_all)>0) {
+        pydeg_all <- pydeg_all[with(pydeg_all,
+                                    order(tx_name,
+                                          peak_start)), ]
         fwrite(pydeg_all, pydeg_output_f, quote = FALSE, sep = '\t')
     }
 }

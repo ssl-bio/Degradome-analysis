@@ -300,7 +300,7 @@ do
 	if [ ! -f "$outfile"_test.tab ]
 	then
 	    echo "Oposite comparison with MF=iset[0] and SL=iset[1]"
-	    python "${base_dir}"/"$pydeg_script" \
+	    python "$base_dir/$pydeg_script" \
 		   -gtf "$base_dir/$ref_gtf_sorted" \
 		   -ctrl "$idir_prev/${icomp[0]}".mapped_genome.sam  \
 		   -test "$idir_prev/${icomp[1]}".mapped_genome.sam \
@@ -499,7 +499,7 @@ then
 		-d "$base_dir"
 	
     fi
-    echo $output_dirB/$idir
+    
     Rscript "$base_dir"/Scripts/R/A-GetSizeFactor.R \
 	    -r "$output_dir_base" \
 	    -d "$output_dirB/$idir" \
