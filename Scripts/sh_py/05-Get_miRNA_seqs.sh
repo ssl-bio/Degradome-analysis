@@ -43,7 +43,7 @@ iSp=$(echo "$sp" | sed 's/_/ /' | sed -e 's/^./\U&\E/g')
 read -r miRNAsp < <(awk -v sp="$iSp" 'BEGIN {FS="\t"} ; {if ($3 ~ sp) {print $1}}'\
 		     "$dest_dir/${miRNAsp_list%.gz}")
 
-# If the species was found download the file and add it to the list of variables
+# If the species was found, download the file and add it to the list of variables
 if [[ ${miRNAsp:+1} ]]
 then
     outfile="$dest_dir/$miRNAsp".gff3

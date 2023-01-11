@@ -117,7 +117,7 @@ source activate "${conda_pydeg_map}"
 set -u
 # Check that miRNA file exists
 inputfile="${supp_data_dir}"/miRNA_seq/input/miRNA_sequences.fa
-if [[ ! -f ${inputfile} ]]
+if [ ! -f ${inputfile} ] || [ ! -s ${inputfile} ]
 then
     /bin/bash Scripts/sh_py/05-Get_miRNA_seqs.sh "$ibase" "$2"
 fi
