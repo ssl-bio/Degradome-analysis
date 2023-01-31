@@ -190,7 +190,7 @@ for (i in seq_along(MF_list)) {
 
 
         ##remove duplicate peaks based on representative gene model
-        dfs.ID <- SplitDFbyNpeaks(df_annotated, ref_col = "indx", keep_ref = TRUE)
+        dfs.ID <- splitDFbyCol(df_annotated, ref_col = "indx", keep_ref = TRUE)
         df_dup <- dfs.ID$df_dup
         df_uniq <- dfs.ID$df_uniq
 
@@ -288,7 +288,7 @@ for (i.comp in comparisons) {
                                     df.sort$gene_region_end)
 
         ## Count and select duplicated entries
-        dfs.ID <- SplitDFbyNpeaks(df.sort, "indx_dup")
+        dfs.ID <- splitDFbyCol(df.sort, "indx_dup")
         df_dup <- dfs.ID$df_dup
         dup_ID <- unique(df_dup$tx_name)
         df_np_list <- list()
@@ -364,7 +364,7 @@ for (i in seq_along(MF_list)) {
                          header = TRUE)
 
         cat("\t\tCheck Ref file & Add max read in peak\n")
-        df <- checkPeakRef(df, i.comp)
+        df <- getMaxPeak(df, i.comp)
 
         ## Add S/N ratio
         cat("\t\tAdd S/N ratio \n")
@@ -381,7 +381,7 @@ for (i in seq_along(MF_list)) {
                                   df.ID$gene_region_start,
                                   df.ID$gene_region_end)
 
-        dfs.ID <- SplitDFbyNpeaks(df.ID, "indx_dup")
+        dfs.ID <- splitDFbyCol(df.ID, "indx_dup")
         df_dup <- dfs.ID$df_dup
         df_uniq <- dfs.ID$df_uniq
         if (!is.null(df_dup) && nrow(df_dup) > 0) {
@@ -389,7 +389,7 @@ for (i in seq_along(MF_list)) {
             cat("Calculating max signal outside peak  (Peaks 2+)...\n")
 
             ## Import bigwig data based on i.comp variable
-            sample_name <- SampleName(i.comp)
+            sample_name <- getFirstComparison(i.comp)
             bigwig <- dg_bigwig_all[[sample_name]]
             ##--------------------------------------------------
             ## Calculate read outside peak
@@ -407,8 +407,8 @@ for (i in seq_along(MF_list)) {
                                           row.names = NULL,
                                           header = TRUE)
             ## Add non peak region
-            pydeg_np_region <- addMaxNonPeakRegion(#
-                df = pydeg_np_region,
+            pydeg_np_region <- getMaxNonPeakRegion(#
+                df   = pydeg_np_region,
                 bigwig = bigwig,
                 i.comp = i.comp,
                 core = env$core)
@@ -419,7 +419,7 @@ for (i in seq_along(MF_list)) {
             cat("\tCalculating max signals outside peak (Gene-wise)...\n")
             ## Vector of unique IDs to loop
             dup_ID <- unique(df_dup$tx_name) #ID
-            pydeg_np_gene <- addMaxNonPeakGene(pydeg_np_region,
+            pydeg_np_gene <- getMaxNonPeak_multiple(pydeg_np_region,
                                                dup_ID,
                                                core = env$core)
             pydeg_np_gene <- pydeg_np_gene[!is.na(pydeg_np_gene$ID), ]
@@ -441,7 +441,7 @@ for (i in seq_along(MF_list)) {
         ##----------------------------------------
         cat("\t\tCalculating Max Non Peak (Peaks 1)...\n")
         if(nrow(df_uniq) > 0) {
-            df_uniq <- checkNonPeakRefOne(df_uniq, i.comp, cols.indx)
+            df_uniq <- getMaxNonPeak_single(df_uniq, i.comp, cols.indx)
         } else {
             df_uniq <- NULL
         }
@@ -629,7 +629,7 @@ for (i in seq_along(MF_list)) {
                                     gene_region_start,
                                     gene_region_end,
                                     sep = ""))
-                dfs.ID <- SplitDFbyNpeaks(df.ID, "indx_dup")
+                dfs.ID <- splitDFbyCol(df.ID, "indx_dup")
                 df_dup <- dfs.ID$df_dup
                 df_uniq <- dfs.ID$df_uniq
 
@@ -639,7 +639,7 @@ for (i in seq_along(MF_list)) {
                     cat("\t\tCalculating max signal outside peak  (Peaks 2+)...\n")
 
                     ## Import bigwig data based on i.comp variable
-                    sample_name <- SampleName(i.comp.other)
+                    sample_name <- getFirstComparison(i.comp.other)
                     bigwig <- dg_bigwig_all[[sample_name]]
 
                     ## Calculate read outside peak
@@ -660,7 +660,7 @@ for (i in seq_along(MF_list)) {
                         header = TRUE)
 
                     ## Set i.comp to sample 1 to load reference file
-                    pydeg_np_region <- addMaxNonPeakRegion(
+                    pydeg_np_region <- getMaxNonPeakRegion(
                         df = pydeg_np_region,
                         bigwig = bigwig,
                         i.comp = i.comp.other,
@@ -671,7 +671,7 @@ for (i in seq_along(MF_list)) {
                     ## Calculate read outside peak
                     ## Gene-wise
                     cat("\t\tCalculating max signals outside peak (Gene-wise)...\n")
-                    pydeg_np_gene <- addMaxNonPeakGene(#
+                    pydeg_np_gene <- getMaxNonPeak_multiple(#
                         pydeg_np_region, dup_ID, core = env$core)
                     ##--------------------------------------------------
                     ## Remove i.cols and bigwig
@@ -692,7 +692,7 @@ for (i in seq_along(MF_list)) {
                 ##Working on genes with a single peak
                 cat("\t\tCalculating Max Non Peak (Peaks 1)...\n")
                 if (!is.null(df_uniq) && nrow(df_uniq) > 0) {
-                    df_uniq <- checkNonPeakRefOne(#
+                    df_uniq <- getMaxNonPeak_single(#
                         df_uniq,
                         i.comp = i.comp.other,
                         cols.indx)
@@ -716,7 +716,7 @@ for (i in seq_along(MF_list)) {
                 cat("\t\tCheck Ref & Calculate max peak for rep",
                     j.not, " (", i.comp.other , ")\n")
 
-                pydegSingleRep_peak <- checkPeakRef(
+                pydegSingleRep_peak <- getMaxPeak(
                     df = pydegSingleRep_peak,
                     i.comp = i.comp.other)
 

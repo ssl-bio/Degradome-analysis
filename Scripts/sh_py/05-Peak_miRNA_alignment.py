@@ -37,7 +37,7 @@ from time import process_time
 
 # Checks if directory exists if not it creates it
 def dir_exist(ipath):
-    if(not os.path.exists(ipath)):
+    if (not os.path.exists(ipath)):
         os.mkdir(ipath)
 
 
@@ -169,7 +169,7 @@ for line in ifile:
     ivars[ivar[0].strip()] = ivar[1].strip()
 
 # Image settings
-img_font = "Hack Regular"
+img_font = "FreeMono"  # "Hack Regular"
 font_size = 20
 
 # Directory definition
@@ -228,7 +228,7 @@ for i in range(len(iMF_list)):
     - {os.path.basename(out_obj)}
     - {os.path.basename(out_file)}
 Already exists""")
-           
+
     else:
         ifasta = os.path.join(peakSeqDir, "PeakRegioncDNA_category_1_" +
                               iConf2 + "_4_" + str(iMF) + ".fa")

@@ -33,8 +33,8 @@ import tkFont
 
 # Checks if directory exists if not it creates it
 def dir_exist(ipath):
-    if(not os.path.exists(ipath)):
-        os.mkdir(ipath)   
+    if (not os.path.exists(ipath)):
+        os.mkdir(ipath)
 
 
 # Get the index of those alignments whose score is higher than a threshold
@@ -149,7 +149,7 @@ import mirmap
 import mirmap.library_link
 
 # Image settings
-img_font = "Hack Regular"  # "FreeMono"
+img_font = "FreeMono"  # "Hack Regular"
 font_size = 20
 
 # Directory definition
@@ -222,7 +222,7 @@ for indx in range(len(iMF_list)):
                 icomp = tmp[1]
                 ipeak = tmp[2].split(":")[1]
                 peakIndxFull.append(icomp + itx + ipeak)
-                    
+
             if os.path.exists(out_obj):
                 fileobj = open(out_obj, "rb")
                 mm_indx_all = pickle.load(fileobj)
