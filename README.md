@@ -1,4 +1,6 @@
 # Degradome analysis
+
+
 ## Description
 
 Pipeline to map mRNA degradome sequences, compare two conditions and obtain a list of transcripts containing regions with significant differences. All the steps are grouped into two scripts, 01-Degradome.sh and 02-Degradome.sh. The former's main job is to map the sequencing data and call for a third party script (PyDegradome <a href="#citeproc_bib_item_1">Gaglia, Rycroft, and Glaunsinger 2015</a>) which will compare two samples in order to identify regions with significant differences (*peaks*). The latter script will then, associate these regions with known transcripts, and classify them using ratios of read numbers in the peak region and elsewhere (within and between samples).
@@ -52,7 +54,7 @@ conda create --name pydeg_run python=2 -y
 source activate pydeg_run
 
 conda install -c bioconda tophat viennarna unittest2 dendropy -y
-conda install -c anaconda pandas pillow tk -y
+conda install -c anaconda biopython pandas pillow tk -y
 ```
 
 
@@ -68,10 +70,10 @@ BiocManager::install(version = "3.16")
 
 ## Install all packages
 ipackages <- c("Biostrings", "bookdown", "Cairo", "ChIPpeakAnno", "DESeq2", "devtools", "DT",
-               "GenomicFeatures", "Gviz", "RColorBrewer", "RVenn", "biomaRt", "data.table",
-               "doParallel", "dplyr", "ensembldb", "filesstrings", "fontawesome", "ggplot2",
-               "gsubfn", "here", "knitr", "magrittr", "mgsub", "optparse", "pbapply", "purrr",
-               "reshape2", "rmarkdown", "rtracklayer", "seqinr", "stringr", "tidyverse")
+	       "GenomicFeatures", "Gviz", "RColorBrewer", "RVenn", "biomaRt", "data.table",
+	       "doParallel", "dplyr", "ensembldb", "filesstrings", "fontawesome", "ggplot2",
+	       "gsubfn", "here", "knitr", "magrittr", "mgsub", "optparse", "pbapply", "purrr",
+	       "reshape2", "rmarkdown", "rtracklayer", "seqinr", "stringr", "tidyverse")
 BiocManager::install(ipackages)
 ```
 
