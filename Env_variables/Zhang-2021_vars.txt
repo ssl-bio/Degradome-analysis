@@ -30,7 +30,7 @@ pydeg_script_settings=("0.95 4" "0.99 3" "0.95 2")
 # File names constants
 Sp_base=Arabidopsis_thaliana.TAIR10
 sp=arabidopsis_thaliana
-ver=.55
+ver=.56
 ich=5
 i_chr=.${ich}
 

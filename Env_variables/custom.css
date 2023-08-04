@@ -1,0 +1,105 @@
+@charset "UTF-8";
+
+:root {
+    --bg-title: #1b5b66;
+    --bg-subtitle: #48a4ba;
+    --title-color: whitesmoke;
+    --alt-text-color: red;
+    --bg-tbl: #19D3F3;
+}
+
+body {
+    font-family: Open Sans, sans-serif;
+}
+
+H1 {
+    font-size: 32;
+    font-weight: bold;
+    color: var(--title-color);
+    background-color: var(--bg-title);
+    margin-top: 1em;
+    margin-bottom: 1em;
+    padding-bottom: 0.5em;
+    padding-top: 0.5em;
+    
+}
+
+H2 {
+    font-size: 28;
+    font-weight: bold;
+    background-color: var(--bg-subtitle);
+
+}
+
+H3 {
+    font-size: 24;
+    font-weight: bold;
+}
+
+H4 {
+    font-size: 22;
+    font-weight: bold;
+    margin-top: 0.5em;
+}
+
+code {
+    color: var(--bg-subtitle);
+}
+
+.hl {
+    background-color: var(--bg-subtitle);
+}
+
+.mirna_font {
+    color: crimson;
+    /* #e41a1c     */
+}
+
+.description_h3 {
+ font-size: 21px;   
+}
+
+.description_h4 {
+ font-size: 19px;   
+}
+
+.csl-entry {
+    font-size: 17px;
+    margin-top: 7px;
+    margin-bottom: 7px;
+}
+
+.alt_text {
+    font-size: 21px;
+    color: var(--alt-text-color);
+}
+
+.vspace_title {
+    margin-top: 30px;
+}
+
+.vspace_section {
+    margin-top: 20px;
+}
+
+.vspace_subsection {
+    margin-top: 10px;
+}
+
+.radio_items {
+    font-size: 19px;
+    padding-left: 20px;
+}
+
+.miRNA_alignment {
+    border: solid;
+    border-color: var(--bg-subtitle);
+    padding: 5px;
+}
+
+.miRNA_alignment p {
+    color: var(--bg-title);
+    font-weight: bold;
+    font-size: 17px;
+    padding-top: 5px;
+}

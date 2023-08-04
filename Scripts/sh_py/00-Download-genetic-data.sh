@@ -24,6 +24,7 @@ else
     source "$ivars"
 fi
 
+
 ##Step counter
 stp=1
 
@@ -51,6 +52,30 @@ do
 	stp=$((stp+1))
 	wget http://ftp.ensemblgenomes.org/pub/current/plants/"$iformat/$sp/$file_base"."$iformat".gz -O "$dl_file"
 	gzip -dk < "$download_dir"/"$file_base"."$iformat".gz > "$outfile"
+    fi
+done
+
+#Fasta files
+download_dir=Genetic_data/Compressed
+dest_dir=Genetic_data/Fasta
+
+# List should match the names in 
+fasta_list=("$Sp_base.dna.toplevel.fa.gz"\
+       "$Sp_base.cdna.all.fa.gz"\
+       "$Sp_base.ncrna.fa.gz")
+type_list=(dna cdna ncrna)
+outpath_list=("${At_genome}" "${At_transcript}" "${At_ncRNA}")
+
+END=$((${#fasta_list[@]}-1))
+for i in $(seq 0 $END)
+do
+    dl_file="$download_dir"/"${fasta_list[i]}"
+    if [ ! -f "$dl_file" ] || [ ! -f "${outpath_list[i]}" ]
+    then
+	echo "$stp - Download sequence files: genome, cDNA, ncRNA"
+	stp=$((stp+1))
+	wget http://ftp.ensemblgenomes.org/pub/plants/current/fasta/"$sp/${type_list[i]}/${fasta_list[i]}" -O "$dl_file"
+	gzip -dk < "$download_dir"/"${fasta_list[i]}" > "${outpath_list[i]}"
     fi
 done
 
@@ -107,30 +132,3 @@ then
 	awk 'BEGIN {FS=";"}{if($1 ~ /^>/) {gsub("Name=","",$3);print ">",$3} else {print $0}}' "$out_dir_input"/miRNA.fa | seqkit rmdup -s > "$out_dir_input"/miRNA_sequences.fa
     fi
 fi
-
-
-
-#Fasta files
-download_dir=Genetic_data/Compressed
-dest_dir=Genetic_data/Fasta
-
-# List should match the names in 
-fasta_list=("$Sp_base.dna.toplevel.fa.gz"\
-       "$Sp_base.cdna.all.fa.gz"\
-       "$Sp_base.ncrna.fa.gz")
-type_list=(dna cdna ncrna)
-outpath_list=("${At_genome}" "${At_transcript}" "${At_ncRNA}")
-
-END=$((${#fasta_list[@]}-1))
-for i in $(seq 0 $END)
-do
-    dl_file="$download_dir"/"${fasta_list[i]}"
-    if [ ! -f "$dl_file" ] || [ ! -f "${outpath_list[i]}" ]
-    then
-	echo "$stp - Download sequence files: genome, cDNA, ncRNA"
-	stp=$((stp+1))
-	wget http://ftp.ensemblgenomes.org/pub/plants/current/fasta/"$sp/${type_list[i]}/${fasta_list[i]}" -O "$dl_file"
-	gzip -dk < "$download_dir"/"${fasta_list[i]}" > "${outpath_list[i]}"
-    fi
-done
-

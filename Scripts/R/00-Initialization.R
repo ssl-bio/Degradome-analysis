@@ -125,6 +125,8 @@ pydeg_pooled_dir <- file.path(env["output_dirR"],
                               "02-PyDegradome_pooled")
 report_dir <- file.path(env["output_dirR"],
                         "03-Report")
+dash_dir <- file.path(env["output_dirR"],
+                        "04-Dash_app")
 summary_dir <- file.path(report_dir,
                          "Summary")
 
@@ -157,6 +159,7 @@ Rvarious_dir <- file.path(env["supp_data_dir"], "R")
 
 dir.create(env[["output_dirR"]])
 dir.create(report_dir)
+dir.create(dash_dir)
 dir.create(pydeg_pooled_dir)
 dir.create(pydeg_processed_dir)
 dir.create(env[["supp_data_dir"]])

@@ -137,3 +137,10 @@ conda deactivate
 source activate "${conda_pydeg_R}"
 set -u
 Rscript Scripts/R/05-Report_main.R -d "$dir" -b "$ibase"
+
+set +u
+conda deactivate
+source activate "${conda_pydeg_map}"
+set -u
+echo "Running 06-Process_data.py"
+python Scripts/sh_py/05-Peak_miRNA_alignment.py -rd "$dir" -bn "$ibase"

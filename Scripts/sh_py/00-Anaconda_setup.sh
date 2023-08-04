@@ -20,6 +20,9 @@ set -eo pipefail
 conda install -c bioconda bioawk fastqc trim-galore bedtools seqkit bowtie2 picard samtools biopython qualimap htseq deeptools salmon -y
 conda install -c bioconda agat -y
 conda install -c anaconda pandas pillow tk -y
+conda install -c conda-forge dash dash-bootstrap-components pdf2image
+conda install -c plotly plotly plotly_express
+pip install dash-dangerously-set-inner-html
 
 set +u
 conda deactivate

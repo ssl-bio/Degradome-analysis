@@ -79,7 +79,7 @@ names(dg_bigwig_all) <- names(sample_list)
 
 ## Define mart
 mart <- useMart(dataset = "athaliana_eg_gene", biomart = "plants_mart",
-                host = "plants.ensembl.org")
+                host = "https://plants.ensembl.org")
 
 At_genome_seq <- readDNAStringSet(env$At_genome)
 ##--------------------------------------------------
@@ -89,6 +89,10 @@ txdb <- loadDb(file.path(env["supp_data_dir"], "R/txdb_object"))
 
 ## Transcript range
 tr_range <- GenomicFeatures::transcripts(txdb)
+
+## Default number of plots per combination of categories
+Nplots_default <- 50
+Nplots_max <- 100
 ##--------------------------------------------------
 
 for (i in seq_along(MF_list)) {
@@ -131,10 +135,10 @@ for (i in seq_along(MF_list)) {
         ##-------------------------
         plot_subdir_gene <- file.path(pydeg_dplot_dir,
                                       paste0("Gene_", i.comparison))
-        dir.create(plot_subdir_gene)
+        dir.create(plot_subdir_gene, recursive=TRUE)
         plot_subdir_peak <- file.path(pydeg_dplot_dir,
                                       paste0("Peak_", i.comparison))
-        dir.create(plot_subdir_peak)
+        dir.create(plot_subdir_peak, recursive=TRUE)
         ##-----------------------------------
         ##Subset bam files
         tmp <- sapply(i.samples,
@@ -171,9 +175,17 @@ for (i in seq_along(MF_list)) {
             ## Focus on the combination Cat1 = 1 and Cat2 = A
             if (unique(pydeg_plot$category_1) == "1" &&
                 unique(pydeg_plot$category_2) == "A") {
-                Nplots <- length(pydeg_plot$category_1)
+                if (length(pydeg_plot$category_1) > Nplots_max) {
+                    Nplots <- Nplots_max
+                } else {
+                    Nplots <- length(pydeg_plot$category_1)
+                }
             } else {
-                Nplots <- 5
+                if (length(pydeg_plot$category_1) < Nplots_default) {
+                    Nplots <- length(pydeg_plot$category_1)
+                } else {
+                    Nplots <- Nplots_default
+                }
             }
 
             sel.na <- is.na(pydeg_plot$gene_region_start)
@@ -214,19 +226,21 @@ for (i in seq_along(MF_list)) {
                              "biomaRt", "Gviz")
 
             ## Ploting transcript region
-            my.gene.plots <- file.path(plot_subdir_gene,
-                                       paste0(
-                                           paste(
-                                               sprintf("%02d",
-                                                       seq(1,
-                                                           nrow(df_plot))),
-                                               "Gene",
-                                               cat_label,
-                                               gsub("\\.",
-                                                    "_", df_plot$tx_name),
-                                               i.conf_f, "4",
-                                               i.MF, sep = "_"),
-                                           ".pdf"))
+            my.gene.plots <- file.path(
+                plot_subdir_gene,
+                paste0(
+                    paste(
+                        sprintf("%02d",
+                                seq(1,
+                                    nrow(df_plot))),
+                        "Gene",
+                        cat_label,
+                        gsub("\\.",
+                             "_", df_plot$tx_name),
+                        i.conf_f, "4",
+                        i.MF, sep = "_"),
+                    ".pdf")
+            )
 
             gene.sel <- !file.exists(my.gene.plots)
 
@@ -244,10 +258,9 @@ for (i in seq_along(MF_list)) {
                     tx.id <- gsub("\\.", "_", df_plot_gene[i.row,  "tx_name"])
                     ## Ploting transcript region
                     tryCatch({
-                        cairo_pdf(df_plot_gene$file[i.row],
-                                  width = 12,
-                                  height = 8,
-                                  fallback_resolution = 600)
+                        cairo_pdf(file = df_plot_gene$file[i.row],
+                                  width = 9,
+                                  height = 6)
                         drawDplot(#
                             p_chr = df_plot_gene[i.row, "chr"],
                             tx_start = df_plot_gene[i.row, "gene_region_start"],
@@ -321,10 +334,9 @@ for (i in seq_along(MF_list)) {
                                                "tx_name"])
                     ## Ploting peak region
                     tryCatch({
-                        cairo_pdf(df_plot_peak$file[i.row],
-                                  width = 12,
-                                  height = 8,
-                                  fallback_resolution = 600)
+                        cairo_pdf(file = df_plot_peak$file[i.row],
+                                  width = 9,
+                                  height = 6)
                         drawDplot(#
                             p_chr = df_plot_peak[i.row, "chr"],
                             tx_start = df_plot_peak[i.row, "peak_start"],

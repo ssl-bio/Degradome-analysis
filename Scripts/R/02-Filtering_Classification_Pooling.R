@@ -245,10 +245,14 @@ for (comp_list in comp_pair_list) {
         pydeg.tmp <- merge(maxPeakTest_df, maxTxctrl_df,
                            by = "tx_name",
                            all.x = TRUE)
+
+        ## If max_read_tx is 0, add 1 to avoid div by 0
+        setDT(pydeg.tmp)
+        pydeg.tmp[max_read_tx == 0, max_read_tx := 1]
+        
         pydeg.tmp$ratioPTx <- pydeg.tmp$max_peak/pydeg.tmp$max_read_tx
 
         ## change column names
-        setDT(pydeg.tmp)
         data.table::setnames(pydeg.tmp,
                              c("tx_name",
                                "indx",

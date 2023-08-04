@@ -3,7 +3,7 @@
 
 ## Description
 
-Pipeline to map mRNA degradome sequences, compare two conditions and obtain a list of transcripts containing regions with significant differences. All the steps are grouped into two scripts, 01-Degradome.sh and 02-Degradome.sh. The former's main job is to map the sequencing data and call for a third party script (PyDegradome <a href="#citeproc_bib_item_1">Gaglia, Rycroft, and Glaunsinger 2015</a>) which will compare two samples in order to identify regions with significant differences (*peaks*). The latter script will then, associate these regions with known transcripts, and classify them using ratios of read numbers in the peak region and elsewhere (within and between samples).
+Pipeline to map mRNA degradome sequences, compare two conditions and obtain a list of transcripts containing regions with significant differences. All the steps are grouped into two scripts, 01-Degradome.sh and 02-Degradome.sh. The former's main job is to map the sequencing data and call for a third party script (`PyDegradome` <a href="#citeproc_bib_item_1">Gaglia, Rycroft, and Glaunsinger 2015</a>) which will compare two samples in order to identify regions with significant differences (*peaks*). The latter script will then, associate these regions with known transcripts, and classify them using ratios of read numbers in the peak region and elsewhere (within and between samples).
 
 
 ## Environment setup
@@ -16,7 +16,7 @@ A number of different programs are used and these are installed in three minicon
 
 The following commands will create all the anaconda environments mentioned above and install the required packages within them. Linux dependencies needed to install and setup R are indicated at the beginning.
 
-```bash
+```sh
 # Install linux dependecies
 sudo apt install libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev libcurl4-openssl-dev libxml2-dev
 
@@ -36,6 +36,9 @@ set -eo pipefail
 conda install -c bioconda bioawk fastqc trim-galore bedtools seqkit bowtie2 picard samtools biopython qualimap htseq deeptools salmon -y
 conda install -c bioconda agat #Should be done separately to avoid hanging
 conda install -c anaconda pandas pilow tk -y
+conda install -c conda-forge dash dash-bootstrap-components pdf2image
+conda install -c plotly plotly plotly_express
+pip install dash-dangerously-set-inner-html
 
 set +u
 conda deactivate
@@ -62,23 +65,27 @@ conda install -c anaconda biopython pandas pillow tk -y
 
 The following commands should be run on the environment pydeg\_R. They will install bioconductor and all the packages required for the analysis of the data. Note that the version of bioconductor should be compatible with that of R (See [bioconductor installation instructions](https://www.bioconductor.org/install/))
 
-```r
+```R
+## Install devtools
+install.packages("devtools")
+
 ## Bioconductor install
 if (!require("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
-BiocManager::install(version = "3.16")
+BiocManager::install(version = "3.17")
 
 ## Install all packages
-ipackages <- c("Biostrings", "bookdown", "Cairo", "ChIPpeakAnno", "DESeq2", "devtools", "DT",
-	       "GenomicFeatures", "Gviz", "RColorBrewer", "RVenn", "biomaRt", "data.table",
-	       "doParallel", "dplyr", "ensembldb", "filesstrings", "fontawesome", "ggplot2",
-	       "gsubfn", "here", "knitr", "magrittr", "mgsub", "optparse", "pbapply", "purrr",
-	       "reshape2", "rmarkdown", "rtracklayer", "seqinr", "stringr", "tidyverse")
+ipackages <- c("Biostrings", "biomaRt", "bookdown", "Cairo",
+	       "ChIPpeakAnno", "DESeq2", "devtools", "DT",
+	       "GenomicFeatures", "Gviz", "RColorBrewer", "RVenn",
+	       "biomaRt", "data.table", "doParallel", "dplyr",
+	       "ensembldb", "filesstrings", "fontawesome", "ggplot2",
+	       "gsubfn", "here", "knitr", "magrittr", "mgsub", "optparse", "pbapply", "purrr", "reshape2", "rmarkdown", "rtracklayer", "seqinr", "stringr", "tidyverse")
 BiocManager::install(ipackages)
 ```
 
 1.  Custom package installation
-
+    
     A number of commands used to process the data were wrapped in an R packaged named PostPydeg available at [github](https://github.com/ssl-bio/R_postpydeg.git). The commands to install it are described below.
     
     ```R
@@ -107,11 +114,42 @@ In the commands below, note that two parameters are required, 'project name' and
 ```
 
 
+## Running the plotly dash app
+
+Some modifications were included in order to summarize the results of the analysis in a plotly dash app. The second script (`02-Degradome.sh`) now produces a new folder `04-Dash_app`, with all the files needed to display a report in a web browser. To run the app is necessary to activate the environment, `pydeg_map`, and from within the folder run the following command:
+
+```bash
+python app.py
+```
+
+Then, the report can be analyzed on a web browser on the address, `localhost:8050`
+
+A live demo can be found at <https://sslbio.pythonanywhere.com/> username: guest password: sslbio
+
+
+### Regarding the files [August 2023]
+
+For this purpose of generating the report following files were included:
+
+-   `Env_variables/PostPydeg_factor_description.tsv`: Tab-separated file with details of the analysis.
+-   `Env_variables/custom.css`: css file specifying some style options for the report
+-   `Scripts/sh_py/06-Process_data.py`: Script for processing the data required for the report
+-   `Scripts/sh_py/app.py`: Plotly dash app.
+
+The files above are in an early stage and some work is needed to make the process more efficient, particularly.
+
+-   Improve the generation of the `Env_variables/PostPydeg_factor_description.tsv` file. Currently the description was written in emacs org-mode, exported to html format and copied to the `description` column in the `tsv` file.
+-   Improve the generation of files and variables (06-Process\_data.py). Currently peak plots generated by the script, `03-Drawing_Dplots.R` are converted from `pdf` to `jpg` duplicating the number of plots.
+    -   One option is to delete the `pdf` files and map the links in the reports generated in R to the location of the `jpg` equivalents
+-   Improve the quality of the report (app.py)
+
+
 ## Further details
 
 For further details see this [post](https://ssl-blog.netlify.app/posts/degradome-analysis/degradome-code/)
 
 
 ## References
-  <div class="csl-entry"><a id="citeproc_bib_item_1"></a>Gaglia, Marta Maria, Chris H. Rycroft, and Britt A. Glaunsinger. 2015. “Transcriptome-Wide Cleavage Site Mapping on Cellular mRNAs Reveals Features Underlying Sequence-Specific Cleavage by the Viral Ribonuclease SOX.” Edited by Pinghui Feng. <i>PLOS Pathogens</i> 11 (12): e1005305. doi:<a href="https://doi.org/10.1371/journal.ppat.1005305">10.1371/journal.ppat.1005305</a>.</div>
+
+  <div class="csl-entry"><a id="citeproc_bib_item_1"></a>Gaglia, Marta Maria, Chris H. Rycroft, and Britt A. Glaunsinger. 2015. “Transcriptome-Wide Cleavage Site Mapping on Cellular mRNAs Reveals Features Underlying Sequence-Specific Cleavage by the Viral Ribonuclease SOX.” Edited by Pinghui Feng. <i>Plos Pathogens</i> 11 (12): e1005305. doi:<a href="https://doi.org/10.1371/journal.ppat.1005305">10.1371/journal.ppat.1005305</a>.</div>
 </div>

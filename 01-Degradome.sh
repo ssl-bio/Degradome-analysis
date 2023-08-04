@@ -12,8 +12,6 @@
 
 # Example: output_01/05-PyDegradome/t_SRR10759112_c_SRR10759114_0.95_4_4
 #==================================================
-shopt -s extglob
-
 # Check the number of arguments
 if [[ -z $1 ]]
 then
@@ -33,6 +31,16 @@ then
 else
     source "$ivars"
 fi
+
+# Enable extended pattern matching
+shopt -s extglob
+
+# activate conda environment
+eval "$(conda shell.bash hook)"
+source activate "$conda_pydeg_map"
+
+#Abort if get any error
+set -eo pipefail
 
 #Check files
 ifiles=(
@@ -114,9 +122,9 @@ qc_loop() {
 }
 #==================================================
 
-#activate conda environment
-eval "$(conda shell.bash hook)"
-source activate "$conda_pydeg_map"
+# #activate conda environment
+# eval "$(conda shell.bash hook)"
+# source activate "$conda_pydeg_map"
 
 #Abort if get any error
 set -eo pipefail

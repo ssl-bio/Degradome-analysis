@@ -31,7 +31,8 @@ setwd(opt$wd)
 ivarF <- "Initialization_variables.RData"
 ivarM <- paste0("minimal_variables_", opt$base, ".RData")
 error_msg <- " was not found.\nPlease run 'Scripts/R/00-Initialization.R' providing the root directory and the project base name.\nAlternatively run '02-Degradome.sh' providing the project base name.\n"
-                                        #Minimal variables
+
+## Minimal variables
 min_variables <- file.path("Env_variables", ivarM)
 if (file.exists(min_variables)) {
     load(min_variables)

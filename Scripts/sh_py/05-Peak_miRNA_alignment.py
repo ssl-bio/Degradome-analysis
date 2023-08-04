@@ -1,21 +1,25 @@
-# Aligns RNA sequences around peaks identified from PyDegradome analysis
-# against known miRNA sequences downloaded from www.mirbase.org
+# 05-Peak_miRNA_alignment.py
 
-# Type of alignment is global, with -10, -2 open, extend penalty score
-# Alignments with a score above a threshold are reported.
+'''
+Description: Aligns RNA sequences around peaks identified from PyDegradome
+analysis against known miRNA sequences downloaded from www.mirbase.org
 
-# Peak sequences are trimmed from both ends to match the length of
-# miRNA sequences tested plus 2nt
+Type of alignment is global, with -10, -2 open, extend penalty score
+Alignments with a score above a threshold are reported.
 
-# Execution: python Scripts/sh_py/05-Peak_miRNA_alignment.py -rd $dir -bn $ibase
-# Where $dir is the input root directory and
-# $ibase refers to the project base name
+Peak sequences are trimmed from both ends to match the length of
+miRNA sequences tested plus 2nt
+
+Execution: python Scripts/sh_py/05-Peak_miRNA_alignment.py -rd $dir -bn $ibase
+Where $dir is the input root directory and
+$ibase refers to the project base name
 
 
-# Output: Aligments are saved as images (*.png)
-# list of putative targets are saved as txt files
-# tuples of peak indices, peak sequences ID, miRNA indices and
-# alignment scores are saved as python objects (pickle)
+Output: Aligments are saved as images (*.png)
+list of putative targets are saved as txt files
+tuples of peak indices, peak sequences ID, miRNA indices and
+alignment scores are saved as python objects (pickle)
+'''
 
 import os  # access os directories and files
 import argparse
@@ -25,7 +29,7 @@ import itertools
 from Bio import SeqIO  # parse fasta
 # from Bio import pairwise2  # align
 from Bio import Align  # align
-from Bio.pairwise2 import format_alignment  # pretty print alignment
+# from Bio.pairwise2 import format_alignment  # pretty print alignment
 from Bio.Align import substitution_matrices as submat  # Subs. matrices
 import multiprocessing as mp  # parallelization
 import pickle  # Save objects
@@ -38,7 +42,7 @@ from time import process_time
 # Checks if directory exists if not it creates it
 def dir_exist(ipath):
     if (not os.path.exists(ipath)):
-        os.mkdir(ipath)
+        os.makedirs(ipath)
 
 
 # Get the index of those alignments whose score is higher than a threshold
@@ -176,9 +180,11 @@ font_size = 20
 peakSeqDir = os.path.join(ivars["supp_data_dir"], "Peak_sequences")
 mirSeqDir = os.path.join(ivars["supp_data_dir"], "miRNA_seq")
 out_dir = os.path.join(ivars["output_dirR"], "03-Report/Summary")
-out_dir_img_root = os.path.join(ivars["output_dirR"], "03-Report/Alignment")
+out_dir_img_root = os.path.join(ivars["output_dirR"],
+                                "04-Dash_app/assets/Alignment")
 dir_exist(out_dir_img_root)
-out_dir_img = os.path.join(ivars["output_dirR"], "03-Report/Alignment/global")
+out_dir_img = os.path.join(ivars["output_dirR"],
+                           "04-Dash_app/assets/Alignment/global")
 dir_exist(out_dir_img)
 
 # PyDegradome settings
@@ -300,7 +306,8 @@ Already exists""")
                                    idict["peak_indxFull"]))
 
                 # Output summary
-                print('# List of pydegradome identified targets whose peak region align with a miRNA', file=open(out_file, 'w'))
+                print('# List of pydegradome identified targets\
+whose peak region align with a miRNA', file=open(out_file, 'w'))
 
                 for item in l_algn:
                     ialign = item[0]
