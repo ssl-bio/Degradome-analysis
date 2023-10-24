@@ -87,7 +87,7 @@ def merge_columns(df, col_a, col_b, new_col):
     return df
 
 
-def set_plotLink(df):
+def set_plotLink(df, base_name):
     """
     Process the columns of a data frame to
     produce a series with links to plots
@@ -103,12 +103,12 @@ def set_plotLink(df):
     # Convert transposed list to DataFrame
     path_df = pd.DataFrame(path_list_t)
     end_path = path_df.astype(str).apply('_'.join, axis=1)
-    base_path = 'assets/Dplots/Peak_' + df['comparison'] + "/"
+    base_path = f'assets/Dplots/{base_name}/Peak_' + df['comparison'] + "/"
     plot_path = pd.DataFrame([base_path, end_path]).apply("".join)
     return plot_path
 
 
-def set_plotLink_mirna(df, align_type):
+def set_plotLink_mirna(df, align_type, base_name):
     """
     Process the columns of a data frame to
     produce a series with links to plots
@@ -124,12 +124,17 @@ def set_plotLink_mirna(df, align_type):
     # Convert transposed list to DataFrame
     path_df = pd.DataFrame(path_list_t)
     end_path = path_df.astype(str).apply('_'.join, axis=1)
-    base_path = f'assets/Alignment/{align_type}/' + df['Comparison'] + "/"
+    base_path = f'assets/Alignment/{base_name}/{align_type}/' +\
+        df['Comparison'] + "/"
     plot_path = pd.DataFrame([base_path, end_path]).apply("".join)
     return plot_path
 
 
 def plot2jpg(plot, indir, outdir, dpi=150):
+    """
+    Converts a pdf into a jpg file if the latter doesn't
+    exist in the 'outdir'
+    """
     in_file = os.path.join(indir, plot)
     plot_jpg = plot.replace(".pdf", ".jpg")
     out_file = os.path.join(outdir, plot_jpg)
@@ -169,7 +174,6 @@ args = parser.parse_args()
 os.chdir(args.root_dir)
 
 # Import variables
-# ifile = open("Env_variables/Degradome_" + "Zhang-2021" + ".txt", "r")
 ifile = open("Env_variables/Degradome_" + args.base_name + ".txt", "r")
 ivars = defaultdict(str)
 for line in ifile:
@@ -186,25 +190,32 @@ output_dir = os.path.join(
     ivars["output_dirR"], '04-Dash_app'
 )
 dplot_path = os.path.join(ivars['output_dirR'], "03-Report", "Dplots")
-dplot_path_out = os.path.join(output_dir, "assets", "Dplots")
+dplot_path_out = os.path.join(output_dir, "assets",
+                              "Dplots", ivars['ibase'])
 dplot_dirs = os.listdir(dplot_path)
-idirs = ["assets/Dplots/" + idir for idir in dplot_dirs]
+idirs = [f"assets/Dplots/{ivars['ibase']}/" + idir for idir in dplot_dirs]
 
 # Create dash file structure
-idirs.append('data')
+idirs += ['data', 'assets/Images']
 for idir in idirs:
     ipath = os.path.join(output_dir, idir)
     if (not os.path.exists(ipath)):
         os.makedirs(ipath)
 
 # Copy files to the dash app folder
-shutil.copy(os.path.join('Scripts/sh_py', 'app.py'),
-            output_dir)
+shutil.copytree(os.path.join('Scripts/sh_py/dash_app'),
+                output_dir, dirs_exist_ok=True)
+
 shutil.copy(os.path.join('./Env_variables',
                          'PostPydeg_factor_description.tsv'),
             os.path.join(output_dir, 'data'))
+
 shutil.copy(os.path.join('Env_variables', 'custom.css'),
             os.path.join(output_dir, 'assets'))
+
+shutil.copytree(os.path.join('Env_variables', 'Images'),
+                os.path.join(output_dir, 'assets/Images'),
+                dirs_exist_ok=True)
 
 # Convert plots from pdf to jpg
 for idir in dplot_dirs:
@@ -214,14 +225,15 @@ for idir in dplot_dirs:
     dplot_files_out = os.listdir(dplot_dir_out)
     dplot_files_in = [iplot for iplot in dplot_files if
                       iplot.replace(".pdf", ".jpg") not in dplot_files_out]
-    irange = range(len(dplot_files_in))
-    pool = mp.Pool(mp.cpu_count()-2)
-    l_score = [pool.apply(plot2jpg,
-                          args=(dplot_files_in[i],
-                                dplot_dir,
-                                dplot_dir_out)
-                          ) for i in irange]
-    pool.close()
+    if dplot_files_in:
+        irange = range(len(dplot_files_in))
+        pool = mp.Pool(mp.cpu_count()-2)
+        l_score = [pool.apply(plot2jpg,
+                              args=(dplot_files_in[i],
+                                    dplot_dir,
+                                    dplot_dir_out)
+                              ) for i in irange]
+        pool.close()
 
 # Process pooled files of candidate peaks
 pooledFiles = [item for item in os.listdir(pooledDir)
@@ -288,10 +300,11 @@ for i in range(0, len(pooledFiles)):
     pooled_df2.index = range(0, len(pooled_df2))
 
     # peak plot
-    link_plot = set_plotLink(pooled_df2)
+    link_plot = set_plotLink(pooled_df2, ivars['ibase'])
     link_test = [os.path.isfile(os.path.join(output_dir, ilink)) for
                  ilink in link_plot]
     pooled_df2['peak_plot_link'] = np.where(link_test, link_plot, np.nan)
+
     # gene plot
     link_plot2 = [link.replace('Peak', 'Gene') for link in link_plot]
     link_test = [os.path.isfile(os.path.join(output_dir, ilink)) for
@@ -367,14 +380,16 @@ miRNAFiles_mirmap = [
 
 # Add link to existing plots
 df_miRNAalignment_global = process_miRNAData(miRNAFiles_global)
-link_plot = set_plotLink_mirna(df_miRNAalignment_global, 'global')
+link_plot = set_plotLink_mirna(df_miRNAalignment_global,
+                               'global', ivars['ibase'])
 link_test = [os.path.isfile(os.path.join(output_dir, ilink)) for
              ilink in link_plot]
 df_miRNAalignment_global['global_link'] = np.where(link_test,
                                                    link_plot, np.nan)
 
 df_miRNAalignment_mirmap = process_miRNAData(miRNAFiles_mirmap)
-link_plot = set_plotLink_mirna(df_miRNAalignment_mirmap, 'mirmap')
+link_plot = set_plotLink_mirna(df_miRNAalignment_mirmap,
+                               'mirmap', ivars['ibase'])
 link_test = [os.path.isfile(os.path.join(output_dir, ilink)) for
              ilink in link_plot]
 df_miRNAalignment_mirmap['mirmap_link'] = np.where(link_test,
@@ -473,7 +488,8 @@ test_samples = samples2dict(ivars['test_samples'],
                             ivars['test_samples_name'])
 control_samples = samples2dict(ivars['control_samples'],
                                ivars['control_samples_name'])
-sample_dict = test_samples | control_samples
+# Merge dictionaries
+sample_dict = dict(test_samples.items() | control_samples.items())
 ivars['sample_dict'] = sample_dict
 
 # Dictionary of comparison code and name
@@ -506,6 +522,6 @@ ivars['cat1_dict'] = cat1_dict
 ivars['cat2_dict'] = cat2_dict
 
 out_file = os.path.join(
-    output_dir, "data", "local_vars.json")
+    output_dir, "data", f"{ivars['ibase']}_local_vars.json")
 with open(out_file, 'w') as out:
     json.dump(ivars, out)

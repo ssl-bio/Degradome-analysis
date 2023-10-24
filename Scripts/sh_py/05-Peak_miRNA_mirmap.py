@@ -65,7 +65,7 @@ def f_mirmapindx(itarget, imirna, mirindx, peakindx):
 
 
 # Get the mirmap object
-def f_mirmap(itarget, imirna):
+def f_mirmap(itarget, imirna, threshold):
     # Append extra bases
     if len(itarget) <= len(imirna) - 1:
         seq_target = "GC" + itarget
@@ -93,9 +93,11 @@ def f_mirmap(itarget, imirna):
             ivars["mirmap_script_dir"], "libs/exe-archlinux-x86_64"
         )
         # mim.eval_dg_open()  # Delta G open
-        mim.eval_dg_duplex()
-        # mim.eval_prob_binomial()  # P binomial
-        return mim
+        if  mim.dg_duplex < threshold:
+            # mim.eval_prob_binomial()  # P binomial
+            return mim
+        else:
+            return None
 
 
 def drawAlign(text, outfile, font, size):
@@ -119,7 +121,9 @@ def drawAlign(text, outfile, font, size):
     # draw = ImageDraw.Draw(img)
     img.save(outfile)
 
-
+# Alignment threshold
+threshold = -13.8
+    
 # Parse input argument
 parser = argparse.ArgumentParser()
 
@@ -164,10 +168,10 @@ peakSeqDir = os.path.join(ivars["supp_data_dir"], "Peak_sequences")
 mirSeqDir = os.path.join(ivars["supp_data_dir"], "miRNA_seq")
 out_dir = os.path.join(ivars["output_dirR"], "03-Report/Summary")
 out_dir_img_root = os.path.join(ivars["output_dirR"],
-                                "04-Dash_app/assets/Alignment")
+                                "04-Dash_app/assets/Alignment",
+                                ivars["ibase"])
 dir_exist(out_dir_img_root)
-out_dir_img = os.path.join(ivars["output_dirR"],
-                           "04-Dash_app/assets/Alignment/mirmap")
+out_dir_img = os.path.join(out_dir_img_root, "mirmap")
 dir_exist(out_dir_img)
 
 # Define PyDegradome settings from variable definition file
@@ -217,7 +221,7 @@ for indx in range(len(iMF_list)):
         )
     else:
         ifasta = os.path.join(
-            peakSeqDir, "PeakRegioncDNA_category_1_" +
+            peakSeqDir, "PeakRegioncDNA_" +
             iConf2 + "_4_" + str(iMF) + ".fa"
         )
         if os.path.exists(ifasta):
@@ -285,7 +289,7 @@ for indx in range(len(iMF_list)):
                     peak_indxFull = peakIndxFull[peak_indx]
                     ipeak = str(peakRegions[peak_indx].seq).replace("T", "U")
                     imirna = str(mirSequences[mir_indx].seq).replace("T", "U")
-                    imirmap = f_mirmap(ipeak, imirna)
+                    imirmap = f_mirmap(ipeak, imirna, threshold)
                     if imirmap is not None:
                         mirmap_final.append(
                             {

@@ -32,16 +32,6 @@ else
     source "$ivars"
 fi
 
-# Enable extended pattern matching
-shopt -s extglob
-
-# activate conda environment
-eval "$(conda shell.bash hook)"
-source activate "$conda_pydeg_map"
-
-#Abort if get any error
-set -eo pipefail
-
 #Check files
 ifiles=(
     "$At_genome"
@@ -232,7 +222,7 @@ do
 	echo "$fbase", "$ireads" >> "$idir"/Log_reads.txt
 	
 	mv "$idir/${ifile%.No-rRNA.fastq}"/accepted_hits.bam "$outfile"
-	samtools index "$outfile"
+	# samtools index "$outfile"
     fi
 done
 
@@ -240,12 +230,22 @@ done
 echo "$stp - Convert bam to sam"
 stp=$((stp+1))
 
+set +u
+conda deactivate
+source activate "$conda_pydeg_map"
+set -u
+
 idir_prev="04_1-bam_genomic"
 idir_sam="04_2-sam_genomic"
 dir_exist "$idir_sam"
 
 for ibam in "$idir_prev"/*.bam
 do
+    if [ ! -f ${ibam}.bai ]
+    then
+	samtools index "$ibam"
+    fi
+    
     ifile=$(basename "$ibam")
     outfile="$idir_sam/${ifile%.bam}".sam
     if [ ! -f "$outfile" ]
@@ -470,7 +470,7 @@ fi
 
 set +u
 conda deactivate
-source activate "$conda_pydeg_map"
+source activate "$conda_pydeg_aux"
 set -u
 
 ## 15 - Count mapped reads to features [transcript]

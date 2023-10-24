@@ -1,13 +1,13 @@
 ## 04-getPeakSeq.R
 
-## Description: From candidate peaks classified into groups 1-A, it produces a fasta file with sequences around the peak (30nt window). Transcript name, comparison where peak was found and genomic and transcrip coordinates are included in the header of each fasta entry
+## Description: From candidate peaks classified into groups 1-A, it produces a fasta file with sequences around the peak (44nt window). Transcript name, comparison where peak was found and genomic and transcrip coordinates are included in the header of each fasta entry
 
 ## Output dir: Supporting_data/Peak_sequences
 ## Output files:
-## - PeakRegioncDNA_category_1_<conf>_<win>_<mf>.fa
+## - PeakRegioncDNA_<conf>_<win>_<mf>.fa
 
 ## Example:
-## - PeakRegioncDNA_category_1_0_95_4_2.fa
+## - PeakRegioncDNA_0_95_4_2.fa
 
 ## Libraries
 suppressPackageStartupMessages(library(stringr))
@@ -66,9 +66,9 @@ tx_sequences <- data.frame(tx_id=names(i.fasta),
                            seq=as.character(i.fasta))
 
 ## fasta_names <- names(i.fasta)
-peak_region <- 30
+peak_region <- 44
 
-## Create a dataframe with unique peaks from Cat 1-A
+## Create a dataframe with unique peaks from Cat 1-A 1-B 2-A 2-B
 pooled_list <- list()
 for (i in seq_along(MF_list)) {
     i.MF <- MF_list[i]
@@ -80,8 +80,9 @@ for (i in seq_along(MF_list)) {
                                                     i.conf_f, "4",
                                                     i.MF, sep = "_"))
     pydeg_all <- fread(input_file)
-    sel <- pydeg_all$category_1 == "1" &
-        pydeg_all$category_2 == "A"
+    sel <- (pydeg_all$category_1 == "1" |  pydeg_all$category_1 == "2") &
+        (pydeg_all$category_2 == "A" | pydeg_all$category_2 == "B")
+    
     if (sum(sel) == 0) {
         next
     }
@@ -124,7 +125,7 @@ for (i in seq_along(MF_list)) {
                                                     i.conf_f, "4",
                                                     i.MF, sep = "_"))
     out_file <- file.path(peakSeq_dir,
-                          paste0(paste("PeakRegioncDNA_category_1",
+                          paste0(paste("PeakRegioncDNA",
                                        i.conf_f, "4", i.MF,
                                        sep = "_"), ".fa"))
 
@@ -133,8 +134,8 @@ for (i in seq_along(MF_list)) {
     }
 
     pydeg_all <- fread(input_file)
-    sel <- pydeg_all$category_1 == "1" &
-        pydeg_all$category_2 == "A"
+    sel <- (pydeg_all$category_1 == "1" |  pydeg_all$category_1 == "2") &
+        (pydeg_all$category_2 == "A" | pydeg_all$category_2 == "B")
 
     if (sum(sel) == 0) {
         next

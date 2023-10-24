@@ -29,28 +29,6 @@ import pickle  # Save objects
 import pandas as pd  # Get summary stats
 
 
-# def f_mirmap(itarget, imirna):
-#     # Append extra bases
-#     seq_target = "GC" + itarget
-#     seq_mirna = imirna[::-1]
-#     # Create the mm object
-#     mim = mirmap.mm(seq_target, seq_mirna)
-
-#     # Search for seeds with defined parameters
-#     mim.find_potential_targets_with_seed(
-#         allowed_lengths=[5, 6],
-#         allowed_gu_wobbles={5: 1, 6: 1},
-#         allowed_mismatches={5: 1, 6: 1},
-#         take_best=True,
-#     )
-#     mim.eval_tgs_au(with_correction=False)  # AU content
-#     # mim.eval_tgs_position(with_correction=False)  # UTR possition
-#     # mim.eval_tgs_pairing3p(with_correction=False)  # 3'pairing
-#     mim.eval_dg_open()  # Delta G open
-#     mim.eval_prob_binomial()  # P binomial
-#     return mim
-
-
 def f_mirmapindx(itarget, imirna, indx):
     # Append extra bases
     if len(itarget) <= len(imirna)-1:
@@ -87,10 +65,11 @@ def f_mirmap(itarget, imirna):
 
     # Search for seeds with defined parameters
     mim.find_potential_targets_with_seed(
-        allowed_lengths=[5, 6],
-        allowed_gu_wobbles={5: 1, 6: 1},
-        allowed_mismatches={5: 1, 6: 1},
-        take_best=True)
+        allowed_lengths=[11, 12],
+        allowed_gu_wobbles={11: 1, 12: 1},
+        allowed_mismatches={11: 1, 12: 1},
+        take_best=True
+    )
     if len(mim.report()) > 0:
         mim.libs = mirmap.library_link.LibraryLink(
             os.path.join(ivars['mirmap_script_dir'],
@@ -101,6 +80,7 @@ def f_mirmap(itarget, imirna):
         mim.eval_dg_duplex()
         mim.eval_prob_binomial()  # P binomial
         return (mim)
+
 
 # Parse input argument
 parser = argparse.ArgumentParser()

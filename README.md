@@ -10,9 +10,10 @@ Pipeline to map mRNA degradome sequences, compare two conditions and obtain a li
 
 A number of different programs are used and these are installed in three miniconda environments:
 
--   **pydeg\_map**: Used for most of the steps of the first script, 01-Degradome.sh
+-   **pydeg\_map**: Used for most of the steps of the first script, `01-Degradome.sh`
 -   **pydeg\_run**: Used mainly to run the PyDegradome script.
 -   **pydeg\_R**: Used to run all the R scripts.
+-   **pydeg\_aux**: Used to install packages that cause conflicts: `salmon`
 
 The following commands will create all the anaconda environments mentioned above and install the required packages within them. Linux dependencies needed to install and setup R are indicated at the beginning.
 
@@ -33,31 +34,43 @@ source activate pydeg_map
 #Abort if get any error
 set -eo pipefail
 
-conda install -c bioconda bioawk fastqc trim-galore bedtools seqkit bowtie2 picard samtools biopython qualimap htseq deeptools salmon -y
+conda install -c bioconda bioawk fastqc trim-galore bedtools seqkit bowtie2 picard samtools biopython qualimap htseq deeptools -y
 conda install -c bioconda agat #Should be done separately to avoid hanging
-conda install -c anaconda pandas pilow tk -y
-conda install -c conda-forge dash dash-bootstrap-components pdf2image
-conda install -c plotly plotly plotly_express
-pip install dash-dangerously-set-inner-html
+conda install -c anaconda pandas pilow tk pip -y
+conda install -c conda-forge dash dash-bootstrap-components pdf2image -y
+conda install -c plotly plotly plotly_express -y
+pip install dash-dangerously-set-inner-html dash_bootstrap_templates nbib dash_breakpoints
 
 set +u
 conda deactivate
 
 # Create R environment
-conda create --name pydeg_R python=3 -y
+conda create --name pydeg_R python=3.11.4 -y
 source activate pydeg_R
 set -u
 
-conda install -c conda-forge pkg-config r-curl r-base -y
+conda install -c conda-forge pkg-config=0.29.2 r-curl=5.0.1 r-base=4.3.0 -y
 
 set +u
 conda deactivate
-# Create auxiliary environment
+
+# Create environment for running pydegradome
 conda create --name pydeg_run python=2 -y
 source activate pydeg_run
+set -u
 
-conda install -c bioconda tophat viennarna unittest2 dendropy -y
-conda install -c anaconda biopython pandas pillow tk -y
+conda install -c bioconda biopython tophat viennarna unittest2 dendropy -y
+conda install -c anaconda scipy pandas pillow tk -y
+
+set +u
+conda deactivate
+
+# Create auxiliary environment
+conda create --name pydeg_aux python=3 -y
+source activate pydeg_aux
+set -u
+
+conda install -c bioconda salmon=1.10.3 -y
 ```
 
 
@@ -66,9 +79,6 @@ conda install -c anaconda biopython pandas pillow tk -y
 The following commands should be run on the environment pydeg\_R. They will install bioconductor and all the packages required for the analysis of the data. Note that the version of bioconductor should be compatible with that of R (See [bioconductor installation instructions](https://www.bioconductor.org/install/))
 
 ```R
-## Install devtools
-install.packages("devtools")
-
 ## Bioconductor install
 if (!require("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
@@ -76,11 +86,11 @@ BiocManager::install(version = "3.17")
 
 ## Install all packages
 ipackages <- c("Biostrings", "biomaRt", "bookdown", "Cairo",
-	       "ChIPpeakAnno", "DESeq2", "devtools", "DT",
-	       "GenomicFeatures", "Gviz", "RColorBrewer", "RVenn",
-	       "biomaRt", "data.table", "doParallel", "dplyr",
-	       "ensembldb", "filesstrings", "fontawesome", "ggplot2",
-	       "gsubfn", "here", "knitr", "magrittr", "mgsub", "optparse", "pbapply", "purrr", "reshape2", "rmarkdown", "rtracklayer", "seqinr", "stringr", "tidyverse")
+               "ChIPpeakAnno", "DESeq2", "devtools", "DT",
+               "GenomicFeatures", "Gviz", "RColorBrewer", "RVenn",
+               "biomaRt", "data.table", "doParallel", "dplyr",
+               "ensembldb", "filesstrings", "fontawesome", "ggplot2",
+               "gsubfn", "here", "knitr", "magrittr", "mgsub", "optparse", "pbapply", "purrr", "reshape2", "rmarkdown", "rtracklayer", "seqinr", "stringr", "tidyverse")
 BiocManager::install(ipackages)
 ```
 
@@ -127,7 +137,7 @@ Then, the report can be analyzed on a web browser on the address, `localhost:805
 A live demo can be found at <https://sslbio.pythonanywhere.com/> username: guest password: sslbio
 
 
-### Regarding the files [August 2023]
+### Regarding the files [August - October 2023]
 
 For this purpose of generating the report following files were included:
 
@@ -138,10 +148,10 @@ For this purpose of generating the report following files were included:
 
 The files above are in an early stage and some work is needed to make the process more efficient, particularly.
 
--   Improve the generation of the `Env_variables/PostPydeg_factor_description.tsv` file. Currently the description was written in emacs org-mode, exported to html format and copied to the `description` column in the `tsv` file.
--   Improve the generation of files and variables (06-Process\_data.py). Currently peak plots generated by the script, `03-Drawing_Dplots.R` are converted from `pdf` to `jpg` duplicating the number of plots.
+-   [ ] Improve the generation of the `Env_variables/PostPydeg_factor_description.tsv` file. Currently the description was written in emacs org-mode, exported to html format and copied to the `description` column in the `tsv` file.
+-   [ ] Improve the generation of files and variables (06-Process\_data.py). Currently peak plots generated by the script, `03-Drawing_Dplots.R` are converted from `pdf` to `jpg` duplicating the number of plots.
     -   One option is to delete the `pdf` files and map the links in the reports generated in R to the location of the `jpg` equivalents
--   Improve the quality of the report (app.py)
+-   [X] Improve the quality of the report (app.py)
 
 
 ## Further details
@@ -151,5 +161,6 @@ For further details see this [post](https://ssl-blog.netlify.app/posts/degradome
 
 ## References
 
+<style>.csl-entry{text-indent: -1.5em; margin-left: 1.5em;}</style><div class="csl-bib-body">
   <div class="csl-entry"><a id="citeproc_bib_item_1"></a>Gaglia, Marta Maria, Chris H. Rycroft, and Britt A. Glaunsinger. 2015. “Transcriptome-Wide Cleavage Site Mapping on Cellular mRNAs Reveals Features Underlying Sequence-Specific Cleavage by the Viral Ribonuclease SOX.” Edited by Pinghui Feng. <i>Plos Pathogens</i> 11 (12): e1005305. doi:<a href="https://doi.org/10.1371/journal.ppat.1005305">10.1371/journal.ppat.1005305</a>.</div>
 </div>

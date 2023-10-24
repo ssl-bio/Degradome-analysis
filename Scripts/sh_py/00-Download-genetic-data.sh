@@ -56,7 +56,7 @@ do
 done
 
 #Fasta files
-download_dir=Genetic_data/Compressed
+# download_dir=Genetic_data/Compressed
 dest_dir=Genetic_data/Fasta
 
 # List should match the names in 
@@ -80,55 +80,55 @@ do
 done
 
 # miRNA
-# Download list of organisms from www.mirbase.org
-miRNAsp_list=organisms.txt.gz
-if [ ! -f "$dest_dir"/"${miRNAsp_list%.gz}" ]
+# Splits species name and changes first character to uppercase
+iSp=$(echo "$sp" | sed 's/_/ /' | sed -e 's/^./\U&\E/g')
+
+# Searches for the species name and retrieves abbreviation
+read -r miRNAsp < <(awk -v sp="$iSp" 'BEGIN {FS="\t"} ; {if ($3 ~ sp) {print $1}}'\
+			"$base_dir"/Env_variables/"${mirbase_list}")
+
+# If the species was found download the file and add it to the list of variables
+if [[ ${miRNAsp:+1} ]]
 then
-    echo "$stp - Download list of organisms from www.mirbase.org"
-    wget https://www.mirbase.org/ftp/CURRENT/"$miRNAsp_list" -O "$download_dir"/"$miRNAsp_list"
-    gzip -dk < "$download_dir"/"$miRNAsp_list" > "$dest_dir"/"${miRNAsp_list%.gz}"
+    outfile="$dest_dir"/"$miRNAsp".gff3
 
-    iSp=$(echo "$sp" | sed 's/_/ /' | sed -e 's/^./\U&\E/g')
-    read -r miRNAsp < <(awk -v sp="$iSp" 'BEGIN {FS="\t"} ; {if ($3 ~ sp) {print $1}}'\
-			 "$dest_dir"/"${miRNAsp_list%.gz}")
-
-    # If the species was found download the file and add it to the list of variables
-    if [[ ${miRNAsp:+1} ]]
+    # Download miRNA sequences for the target species
+    if [ ! -f "$outfile" ]
     then
-	outfile="$dest_dir"/"$miRNAsp".gff3
-
-	# Download miRNA sequences for the target species
-	if [ ! -f "$outfile" ]
-	then
-	    echo "$stp - Download miRNA sequences from www.mirbase.org"
-	    stp=$((stp+1))
-	    ifile=$(basename "$outfile")
-	    wget https://www.mirbase.org/ftp/CURRENT/genomes/"$ifile" -O "$outfile"
+	echo "$stp - Download miRNA sequences from www.mirbase.org"
+	stp=$((stp+1))
+	ifile=$(basename "$outfile")
+	# url_root=https://www.mirbase.org/ftp/CURRENT/genomes/ # Previous
+	url_root=https://www.mirbase.org/download/
+	wget "${url_root}${ifile}" -O "$outfile"
+	if [ $? -ne 0 ]; then
+	    echo "Try to download again without checking certificate"
+	    wget --no-check-certificate "${url_root}${ifile}" -O "$outfile"
 	fi
-
-	#Add the path to the downloaded file to the list of variables
-	echo "ref_miRNA=$outfile" >> "$base_dir"/Env_variables/Degradome_"$ibase".txt
-
-	#Reload list of variables
-	source "$ivars"
-
-	# Check output dir
-	out_dir="$supp_data_dir"/miRNA_seq
-	out_dir_input="$out_dir"/input
-	out_dir_output="$out_dir"/output
-
-	dir_exist "$out_dir_input"
-	dir_exist "$out_dir_output"
-
-	# Edit chromosome names annotation file and create bed file
-	sed  's/^chr//g' "$ref_miRNA" | \
-	    sed 's/^#.*$//g' | awk 'BEGIN{FS="\t";OFS="\t"} {if ($3=="miRNA"){print $1,$4-1,$5,$9,1000,$7}}' > "$out_dir_input"/miRNA.bed
-
-	# Get sequences from genomic fasta file
-	bedtools getfasta -fi "$At_genome" -bed "$out_dir_input"/miRNA.bed -name -s -fo "$out_dir_input"/miRNA.fa
-
-	# Format fasta header to get only the name of the miRNA sequence
-	# Pipe into seqkit and remove duplicates
-	awk 'BEGIN {FS=";"}{if($1 ~ /^>/) {gsub("Name=","",$3);print ">",$3} else {print $0}}' "$out_dir_input"/miRNA.fa | seqkit rmdup -s > "$out_dir_input"/miRNA_sequences.fa
     fi
+
+    #Add the path to the downloaded file to the list of variables
+    echo "ref_miRNA=$outfile" >> "$base_dir"/Env_variables/Degradome_"$ibase".txt
+
+    #Reload list of variables
+    source "$ivars"
+
+    # Check output dir
+    out_dir="$supp_data_dir"/miRNA_seq
+    out_dir_input="$out_dir"/input
+    out_dir_output="$out_dir"/output
+
+    dir_exist "$out_dir_input"
+    dir_exist "$out_dir_output"
+
+    # Edit chromosome names annotation file and create bed file
+    sed  's/^chr//g' "$ref_miRNA" | \
+	sed 's/^#.*$//g' | awk 'BEGIN{FS="\t";OFS="\t"} {if ($3=="miRNA"){print $1,$4-1,$5,$9,1000,$7}}' > "$out_dir_input"/miRNA.bed
+
+    # Get sequences from genomic fasta file
+    bedtools getfasta -fi "$At_genome" -bed "$out_dir_input"/miRNA.bed -name -s -fo "$out_dir_input"/miRNA.fa
+
+    # Format fasta header to get only the name of the miRNA sequence
+    # Pipe into seqkit and remove duplicates
+    awk 'BEGIN {FS=";"}{if($1 ~ /^>/) {gsub("Name=","",$3);print ">",$3} else {print $0}}' "$out_dir_input"/miRNA.fa | seqkit rmdup -s > "$out_dir_input"/miRNA_sequences.fa
 fi

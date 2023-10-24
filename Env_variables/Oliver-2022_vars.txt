@@ -30,12 +30,13 @@ pydeg_script_settings=("0.95 4" "0.99 3" "0.95 2")
 # File names constants
 Sp_base=Arabidopsis_thaliana.TAIR10
 sp=arabidopsis_thaliana
-ver=.56
+ver=.57
 ich=5
 i_chr=.${ich}
 
 # Anaconda environments (Make sure the environments exist)
 conda_pydeg_map=pydeg_map
+conda_pydeg_aux=pydeg_aux
 conda_pydeg_run=pydeg_run
 conda_pydeg_R=pydeg_R
 
@@ -80,4 +81,8 @@ mirmap_script_dir=./Scripts/Third_party/miRmap-1.1
 At_genome=Genetic_data/Fasta/${Sp_base}.dna.fa
 At_transcript=Genetic_data/Fasta/${Sp_base}.cdna.all.fa
 At_ncRNA=Genetic_data/Fasta/${Sp_base}.ncrna.fa
+
+# List of organisms with miRNA data
+mirbase_list=organisms_mirbase.txt
+tarDB_list=organisms_tarDB.txt
 #----------------------------------------------------------------------

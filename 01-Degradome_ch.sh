@@ -12,8 +12,6 @@
 
 # Example: output_01/05-PyDegradome/t_SRR10759112_c_SRR10759114_0.95_4_4
 #==================================================
-shopt -s extglob
-
 # Check the number of arguments
 if [[ -z $1 ]]
 then
@@ -114,9 +112,9 @@ qc_loop() {
 }
 #==================================================
 
-#activate conda environment
-eval "$(conda shell.bash hook)"
-source activate "$conda_pydeg_map"
+# #activate conda environment
+# eval "$(conda shell.bash hook)"
+# source activate "$conda_pydeg_map"
 
 #Abort if get any error
 set -eo pipefail
@@ -225,13 +223,18 @@ do
 	echo "$fbase", "$ireads" >> "$idir"/Log_reads.txt
 	
 	mv "$idir/${ifile%.No-rRNA.fastq}"/accepted_hits.bam "$outfile"
-	samtools index "$outfile"
+	# samtools index "$outfile"
     fi
 done
 
 ## 07 - Filter to target chromosome and convert bam to sam
 echo "$stp - Filter to target chromosome and convert bam to sam"
 stp=$((stp+1))
+
+set +u
+conda deactivate
+source activate "$conda_pydeg_map"
+set -u
 
 idir_prev="04_1-bam_genomic"
 idir_bam="04_2-bam_chromosome"
@@ -241,6 +244,11 @@ dir_exist "$idir_sam"
 
 for ibam in "$idir_prev"/*.bam
 do
+    if [ ! -f ${ibam}.bai ]
+    then
+	samtools index "$ibam"
+    fi
+    
     ifile=$(basename "$ibam")
     outfile="$idir_sam/${ifile%.mapped_genome.bam}".mapped_chromosome.sam
     if [ ! -f "$outfile" ]
@@ -494,7 +502,7 @@ fi
 echo "$stp - Count mapped reads to features [transcript]"
 set +u
 conda deactivate
-source activate "$conda_pydeg_map"
+source activate "$conda_pydeg_aux"
 set -u
 stp=$((stp+1))
 

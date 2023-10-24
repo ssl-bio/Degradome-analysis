@@ -140,6 +140,8 @@ def irev(input_strand):
     reversed_strand = reversed_strand[::-1]
     return (reversed_strand)
 
+# Alignment threshold
+threshold = 33
 
 # Parse input argument
 parser = argparse.ArgumentParser()
@@ -181,10 +183,10 @@ peakSeqDir = os.path.join(ivars["supp_data_dir"], "Peak_sequences")
 mirSeqDir = os.path.join(ivars["supp_data_dir"], "miRNA_seq")
 out_dir = os.path.join(ivars["output_dirR"], "03-Report/Summary")
 out_dir_img_root = os.path.join(ivars["output_dirR"],
-                                "04-Dash_app/assets/Alignment")
+                                "04-Dash_app/assets/Alignment",
+                                ivars["ibase"])
 dir_exist(out_dir_img_root)
-out_dir_img = os.path.join(ivars["output_dirR"],
-                           "04-Dash_app/assets/Alignment/global")
+out_dir_img = os.path.join(out_dir_img_root, "global")
 dir_exist(out_dir_img)
 
 # PyDegradome settings
@@ -236,7 +238,7 @@ for i in range(len(iMF_list)):
 Already exists""")
 
     else:
-        ifasta = os.path.join(peakSeqDir, "PeakRegioncDNA_category_1_" +
+        ifasta = os.path.join(peakSeqDir, "PeakRegioncDNA_" +
                               iConf2 + "_4_" + str(iMF) + ".fa")
         if os.path.exists(ifasta):
             peakSequences = SeqIO.parse(ifasta, "fasta")
@@ -271,7 +273,7 @@ Already exists""")
                     aln_ind = [pool.apply(getAlignIndx,
                                           args=(ipeak,
                                                 mirSequences,
-                                                j, 33)) for j in irange]
+                                                j, threshold)) for j in irange]
                     pool.close()
                     aln_ind_filtered = [i for i in aln_ind if i is not None]
                     results = [aln_ind_filtered, i, peakIndx[i]]

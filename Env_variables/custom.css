@@ -1,45 +1,293 @@
 @charset "UTF-8";
 
 :root {
-    --bg-title: #1b5b66;
-    --bg-subtitle: #48a4ba;
-    --title-color: whitesmoke;
-    --alt-text-color: red;
-    --bg-tbl: #19D3F3;
+    font-size: calc(0.7em + 1vw);
+    font-family: Open-Sans, Sans;
 }
 
 body {
-    font-family: Open Sans, sans-serif;
+    line-height: 1.25em;
+    word-spacing: 0.225em;
 }
 
+main {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+}
+
+/* Headers */
 H1 {
-    font-size: 32;
-    font-weight: bold;
-    color: var(--title-color);
-    background-color: var(--bg-title);
-    margin-top: 1em;
-    margin-bottom: 1em;
-    padding-bottom: 0.5em;
-    padding-top: 0.5em;
-    
+    font-size: 2rem;
+    font-weight: 700;
 }
 
 H2 {
-    font-size: 28;
-    font-weight: bold;
-    background-color: var(--bg-subtitle);
-
+    font-size: 1.750rem;
+    font-weight: 700;
+    margin: 0.15em 0em;
+    padding-left: 0.4em;
+    box-sizing: border-box;
 }
 
 H3 {
-    font-size: 24;
-    font-weight: bold;
+    font-size: 1.500rem;
+    font-weight: 700;
+    margin: 1em;
 }
 
 H4 {
-    font-size: 22;
-    font-weight: bold;
-    margin-top: 0.5em;
+    font-size: 1.250rem;
+    font-weight: 700;
+    margin: 1em;
+}
+
+
+H5 {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.icon {
+    font-size: 1.750rem;
+}
+
+figure {
+  max-width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px;
+  margin: 2em 0 2em;
+}
+
+.img_full,
+.align_plot,
+figure img {
+  width: 100%;
+  height: auto;
+}
+
+.caption_full,
+figure figcaption {
+  width: 100%;
+  padding-top: 10px;
+  font-size: 0.750rem;
+  align-self: flex-end;
+}
+
+/* Size of plotly icons */
+svg.icon{
+    font-size: 0.75rem !important;
+}
+
+.miRNA_alignment p,
+.no_output_w,
+.description_h3 {
+    font-size: 0.875rem;   
+}
+
+.pysettings_items,
+.header_dPlot,
+.tableFont,
+.description_h4 {
+    font-size: 0.750rem;   
+}
+
+.dropdownFont {
+    font-size: 0.625rem;
+}
+
+.listing-number,
+.figure-number {
+    font-weight: 700;
+}
+
+.bib_entry {
+    margin-top: 10px;
+    margin-bottom: 30px;
+}
+
+.org-src-name{
+    margin: 1em 0 2em;
+}
+
+.csl-entry {
+    font-size: 0.8750rem;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+.no_output_w {
+    margin-top: 2em;
+    color: var(--bs-info);
+    font-weight: 700;
+    text-align: center;
+}
+
+.header_dPlot {
+    font-weight: 700;
+    color: var(--bs-info);
+    margin: 1em 0 1em;
+}
+
+.pysettings_items {
+    padding: 0.5em 1em 0;
+    flex-grow: 0;
+    flex-basis: 30%;
+    align-items: center;
+    margin-right: 1em;
+}
+
+.pysettings_description {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 60%;
+    margin-left: 1em;
+}
+
+.miRNA_alignment {
+    margin-top: 1em;
+    border: solid;
+    border-color: var(--bs-primary);
+    padding: 5px;  
+}
+
+.miRNA_alignment p {
+    color: var(--bs-info);
+    background-color: var(--bs-light);
+    font-weight: 700;
+    padding-top: 5px;
+}
+
+.centered_image {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+}
+
+.inavbar {
+    font-size: 0.625rem;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+.fixed-button {
+    position: fixed;
+    display: flex;
+    justify-content: right;
+    bottom: 1;
+    margin-bottom: 30vh;
+    margin-right: 5vw;
+}
+
+.py_table {
+    flex-basis: 100%;
+}
+
+.plots {
+    flex-basis: 100%
+}
+
+.py_results{
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.mycard_on {
+    background-color: var(--bs-primary);
+}
+
+
+@media screen and (min-width: 1400px) {
+    .py_results{
+	display: flex;
+    }
+
+    .py_table{
+	flex-basis: 40%;
+	flex-shrink: 1;
+	margin-right: 1em;
+    }
+    
+    .plots {
+	flex-basis: 40%;
+	flex-grow: 1;
+	margin-left: 1em;
+    }
+
+    figure img {
+	width: 65%;
+    }
+
+   
+    figure figcaption {
+	width: 33%;
+    }
+
+    .pysettings_items {
+	padding: 0.5em 1em 0;
+	flex-grow: 0;
+	flex-basis: 25%;
+	align-items: center;
+	margin-right: 1em;
+    }
+
+    .pysettings_description {
+	flex-grow: 1;
+	flex-shrink: 1;
+	flex-basis: 65%;
+	margin-left: 1em;
+    }
+
+    figure img .img_full {
+	width: 100%;
+	height: auto;
+    }
+
+   
+    figure figcaption .caption_full {
+	width: 100%;
+	padding-top: 10px;
+    }
+}
+
+.one.column,
+.one.columns                    { width: 4.66666666667%; }
+.two.columns                    { width: 13.3333333333%; }
+.three.columns                  { width: 22%;            }
+.four.columns                   { width: 30.6666666667%; }
+.five.columns                   { width: 39.3333333333%; }
+.six.columns                    { width: 48%;            }
+.seven.columns                  { width: 56.6666666667%; }
+.eight.columns                  { width: 65.3333333333%; }
+.nine.columns                   { width: 74.0%;          }
+.ten.columns                    { width: 82.6666666667%; }
+.eleven.columns                 { width: 91.3333333333%; }
+.twelve.columns                 { width: 100%; margin-left: 0; }
+
+.bibOutputTitle {
+    font-size: 1.125rem;
+    font-weight: 700;
+    padding: 1em 0 0;
+    margin: 0.75em 0;
+}
+
+.bibOutputDate {
+    font-size: 0.750rem;
+    font-weight: 700;
+    margin-top: 0.75em;
+    margin-bottom: 1.5em;
+    padding: 0 0 1em;
+    border-bottom: 2px solid var(--bs-primary);
+}
+
+.bibOutputAbstract {
+    line-height: 1.5em;
+    word-spacing: 0.375em;
+    font-size: 0.875rem;
 }
 
 code {
@@ -47,59 +295,5 @@ code {
 }
 
 .hl {
-    background-color: var(--bg-subtitle);
-}
-
-.mirna_font {
-    color: crimson;
-    /* #e41a1c     */
-}
-
-.description_h3 {
- font-size: 21px;   
-}
-
-.description_h4 {
- font-size: 19px;   
-}
-
-.csl-entry {
-    font-size: 17px;
-    margin-top: 7px;
-    margin-bottom: 7px;
-}
-
-.alt_text {
-    font-size: 21px;
-    color: var(--alt-text-color);
-}
-
-.vspace_title {
-    margin-top: 30px;
-}
-
-.vspace_section {
-    margin-top: 20px;
-}
-
-.vspace_subsection {
-    margin-top: 10px;
-}
-
-.radio_items {
-    font-size: 19px;
-    padding-left: 20px;
-}
-
-.miRNA_alignment {
-    border: solid;
-    border-color: var(--bg-subtitle);
-    padding: 5px;
-}
-
-.miRNA_alignment p {
-    color: var(--bg-title);
-    font-weight: bold;
-    font-size: 17px;
-    padding-top: 5px;
+    background-color: var(--bs-light);
 }
