@@ -10,14 +10,13 @@
 ## - PeakRegioncDNA_0_95_4_2.fa
 
 ## Libraries
-suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(ChIPpeakAnno))
-suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(Biostrings))
 suppressPackageStartupMessages(library(seqinr))
 suppressPackageStartupMessages(library(ensembldb))
 suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(optparse))
 
 ## Parse arguments
@@ -84,115 +83,112 @@ for (i in seq_along(MF_list)) {
         (pydeg_all$category_2 == "A" | pydeg_all$category_2 == "B")
     
     if (sum(sel) == 0) {
+        ## sel <- (pydeg_all$category_1 == "3" |  pydeg_all$category_1 == "4")
         next
     }
-    pydeg_sub <- pydeg_all[sel,]
-    pydeg_sub$indx <- paste0(pydeg_sub$tx_name,
-                             pydeg_sub$peak_start,
-                             pydeg_sub$peak_stop)
-    pydeg_sub <- dplyr::select(pydeg_sub, all_of(c("tx_name",
-                                                   "chr",
-                                                   "strand",
-                                                   "peak_start",
-                                                   "peak_stop",
-                                                   "indx")))
+    pydeg_sub <- pydeg_all[sel,] |>
+        mutate(indx = paste0(tx_name, peak_start,
+                             peak_stop)) |>
+        dplyr::select(all_of(c("tx_name", "chr",
+                               "strand", "peak_start",
+                               "peak_stop","indx")))
+    
     pooled_list[[i]] <- pydeg_sub
     
 }
 pooled_dt <- do.call(rbind, pooled_list)
-isel <- !duplicated(pooled_dt)
-pooled_dt <- pooled_dt[isel, ]
+if (!is.null(pooled_dt) && nrow(pooled_dt) > 0) {
+    isel <- !duplicated(pooled_dt)
+    pooled_dt <- pooled_dt[isel, ]
 
-## merge dataframes
-gnm <- GRanges(pooled_dt$chr,
-               IRanges(start = pooled_dt$peak_start,
-                       end = pooled_dt$peak_stop),
-               strand = pooled_dt$strand)
-gnm_tx <- genomeToTranscript(gnm, EDB)
-names(gnm_tx) <- pooled_dt$indx
-gnm_tx_df <- as.data.frame(gnm_tx)
-gnm_tx_df <- merge(gnm_tx_df, tx_sequences, by = "tx_id", all.x = TRUE)
-setnames(gnm_tx_df,"group_name","indx")
+    ## merge dataframes
+    gnm <- GRanges(pooled_dt$chr,
+                   IRanges(start = pooled_dt$peak_start,
+                           end = pooled_dt$peak_stop),
+                   strand = pooled_dt$strand)
+    gnm_tx <- genomeToTranscript(gnm, EDB)
+    names(gnm_tx) <- pooled_dt$indx
+    gnm_tx_df <- as.data.frame(gnm_tx)
+    gnm_tx_df <- merge(gnm_tx_df, tx_sequences, by = "tx_id", all.x = TRUE)
+    setnames(gnm_tx_df,"group_name","indx")
 
-## Loop over pydeg settings
-for (i in seq_along(MF_list)) {
-    i.MF <- MF_list[i]
-    i.conf <- conf_list[i]
-    i.conf_f <- gsub("\\.", "_", i.conf)
+    ## Loop over pydeg settings
+    for (i in seq_along(MF_list)) {
+        i.MF <- MF_list[i]
+        i.conf <- conf_list[i]
+        i.conf_f <- gsub("\\.", "_", i.conf)
 
-    ## Define input and output files
-    input_file <- file.path(pydeg_pooled_dir, paste("Pooled",
-                                                    i.conf_f, "4",
-                                                    i.MF, sep = "_"))
-    out_file <- file.path(peakSeq_dir,
-                          paste0(paste("PeakRegioncDNA",
-                                       i.conf_f, "4", i.MF,
-                                       sep = "_"), ".fa"))
+        ## Define input and output files
+        input_file <- file.path(pydeg_pooled_dir, paste("Pooled",
+                                                        i.conf_f, "4",
+                                                        i.MF, sep = "_"))
+        out_file <- file.path(peakSeq_dir,
+                              paste0(paste("PeakRegioncDNA",
+                                           i.conf_f, "4", i.MF,
+                                           sep = "_"), ".fa"))
 
-    if (file.exists(out_file) || !file.exists(input_file)) {
-        next
+        if (file.exists(out_file) || !file.exists(input_file)) {
+            next
+        }
+
+        pydeg_all <- fread(input_file)
+        sel <- (pydeg_all$category_1 == "1" |  pydeg_all$category_1 == "2") &
+            (pydeg_all$category_2 == "A" | pydeg_all$category_2 == "B")
+
+        if (sum(sel) == 0) {
+            ## sel <- (pydeg_all$category_1 == "3" |  pydeg_all$category_1 == "4")
+            next
+        }
+
+        pydeg_sub <- pydeg_all[sel, ] |>
+            mutate(indx = paste0(tx_name, peak_start, peak_stop))
+
+        ## Merge to get tx coordinates and sequences
+        pydeg_sub_tx  <- merge(pydeg_sub,
+                               dplyr::select(gnm_tx_df,
+                                             all_of(c("tx_id",
+                                                      "tx_width",
+                                                      "start",
+                                                      "end",
+                                                      "exon_rank",
+                                                      "seq",
+                                                      "indx"))),
+                               by = "indx", all.x = TRUE)[, -1]
+        isel <- pydeg_sub_tx$tx_name == pydeg_sub_tx$tx_id
+        pydeg_sub_tx <- pydeg_sub_tx[isel, ]
+
+        ## Get transcript coordinates to extract sequences around peaks
+        width_modulo <- (pydeg_sub_tx$peak_width+1) %% 2
+        seq_offset <- (peak_region - (pydeg_sub_tx$peak_width + 1) - width_modulo) / 2
+        
+        pydeg_sub_tx <- pydeg_sub_tx |>
+            mutate(i.start = start - seq_offset) |>
+            mutate(i.end = end + seq_offset + width_modulo) |>
+            mutate(i.start = if_else(i.start < 1,
+                                     1, i.start)) |>
+            mutate(i.end = if_else(i.end > tx_width.y,
+                                   tx_width.y, i.end)) |>
+            mutate(peak_seq = subseq(seq,
+                                     start = i.start,
+                                     end = i.end))
+        
+        ## Write Fasta file
+        ## attach(pydeg_sub_tx)
+        gr.tmp <- GRanges(seqnames = pydeg_sub_tx$tx_name,
+                          ranges = IRanges(start = pydeg_sub_tx$i.start,
+                                           end = pydeg_sub_tx$i.end))
+        names(gr.tmp) <- paste(pydeg_sub_tx$tx_name,
+                               pydeg_sub_tx$comparison,
+                               paste0("Peak_coors_G:",
+                                      pydeg_sub_tx$peak_start, "-",
+                                      pydeg_sub_tx$peak_stop),
+                               paste0("Pregion_coors_Tx:",
+                                      pydeg_sub_tx$i.start, "-",
+                                      pydeg_sub_tx$i.end))
+        mcols(gr.tmp)$sequence <- pydeg_sub_tx$peak_seq
+
+        write2FASTA(gr.tmp,
+                    file = out_file,
+                    width = 50)
     }
-
-    pydeg_all <- fread(input_file)
-    sel <- (pydeg_all$category_1 == "1" |  pydeg_all$category_1 == "2") &
-        (pydeg_all$category_2 == "A" | pydeg_all$category_2 == "B")
-
-    if (sum(sel) == 0) {
-        next
-    }
-
-    pydeg_sub <- pydeg_all[sel,]
-    pydeg_sub$indx <- paste0(pydeg_sub$tx_name,
-                             pydeg_sub$peak_start,
-                             pydeg_sub$peak_stop)
-
-    ## Merge to get tx coordinates and sequences
-    pydeg_sub_tx  <- merge(pydeg_sub,
-                          dplyr::select(gnm_tx_df,
-                                        all_of(c("tx_id",
-                                                 "tx_width",
-                                                 "start",
-                                                 "end",
-                                                 "exon_rank",
-                                                 "seq",
-                                                 "indx"))),
-                          by = "indx", all.x = TRUE)[, -1]
-    isel <- pydeg_sub_tx$tx_name == pydeg_sub_tx$tx_id
-    pydeg_sub_tx <- pydeg_sub_tx[isel, ]
-
-    ## Get transcript coordinates to extract sequences around peaks
-    width_modulo <- (pydeg_sub_tx$peak_width+1) %% 2
-    seq_offset <- (peak_region - (pydeg_sub_tx$peak_width + 1) - width_modulo) / 2
-    
-    pydeg_sub_tx$i.start <- pydeg_sub_tx$start - seq_offset
-    pydeg_sub_tx$i.end <-  pydeg_sub_tx$end + seq_offset + width_modulo
-
-    pydeg_sub_tx[i.start < 1,
-                 i.start := 1]
-
-    pydeg_sub_tx[i.end > tx_width.y,
-                 i.end := tx_width.y]
-   
-    pydeg_sub_tx$peak_seq <- subseq(pydeg_sub_tx$seq,
-                                    start = pydeg_sub_tx$i.start,
-                                    end = pydeg_sub_tx$i.end)
- 
-    ## Write Fasta file
-    ## attach(pydeg_sub_tx)
-    gr.tmp <- GRanges(seqnames = pydeg_sub_tx$tx_name,
-                      ranges = IRanges(start = pydeg_sub_tx$i.start,
-                                       end = pydeg_sub_tx$i.end))
-    names(gr.tmp) <- paste(pydeg_sub_tx$tx_name,
-                           pydeg_sub_tx$comparison,
-                           paste0("Peak_coors_G:",
-                                  pydeg_sub_tx$peak_start, "-",
-                                  pydeg_sub_tx$peak_stop),
-                           paste0("Pregion_coors_Tx:",
-                                  pydeg_sub_tx$i.start, "-",
-                                  pydeg_sub_tx$i.end))
-    mcols(gr.tmp)$sequence <- pydeg_sub_tx$peak_seq
-
-    write2FASTA(gr.tmp,
-                file = out_file,
-                width = 50)
 }

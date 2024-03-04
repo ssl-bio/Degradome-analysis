@@ -14,6 +14,9 @@ doc_title="Degradome analysis comparing unicellular and mature pollen"
 # Number of available threads
 cores=5
 
+# BioProject Accession code
+prjna=PRJNA548174
+
 # Sample names
 control_samples=("SRR10759114" "SRR10759115")
 control_samples_name=("Mature pollen [1]"  "Mature pollen [2]")
@@ -30,7 +33,7 @@ pydeg_script_settings=("0.95 4" "0.99 3" "0.95 2")
 # File names constants
 Sp_base=Arabidopsis_thaliana.TAIR10
 sp=arabidopsis_thaliana
-ver=.57
+ver=.58
 ich=5
 i_chr=.${ich}
 

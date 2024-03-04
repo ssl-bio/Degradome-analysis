@@ -183,8 +183,8 @@ peakSeqDir = os.path.join(ivars["supp_data_dir"], "Peak_sequences")
 mirSeqDir = os.path.join(ivars["supp_data_dir"], "miRNA_seq")
 out_dir = os.path.join(ivars["output_dirR"], "03-Report/Summary")
 out_dir_img_root = os.path.join(ivars["output_dirR"],
-                                "04-Dash_app/assets/Alignment",
-                                ivars["ibase"])
+                                "03-Report/Alignment")
+
 dir_exist(out_dir_img_root)
 out_dir_img = os.path.join(out_dir_img_root, "global")
 dir_exist(out_dir_img)
@@ -320,8 +320,6 @@ whose peak region align with a miRNA', file=open(out_file, 'w'))
                     icomp = peakRegions[peak_indx].description.split(" ")[1]
                     itx = peakRegions[peak_indx].name
                     imir = mirSequences[mir_indx].name
-                    # ireport = format_alignment(*ialign[0])
-                    # ireport = str(ialign[0]).replace("T","U") + str(ialign[0].score)
                     ialign0 = str(ialign[0]).replace("T", "U").split("\n")
                     imir_seq = irev(ialign0[2])
                     if len(itx) <= len(imir):

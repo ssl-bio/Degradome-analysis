@@ -93,7 +93,7 @@ def f_mirmap(itarget, imirna, threshold):
             ivars["mirmap_script_dir"], "libs/exe-archlinux-x86_64"
         )
         # mim.eval_dg_open()  # Delta G open
-        if  mim.dg_duplex < threshold:
+        if mim.dg_duplex < threshold:
             # mim.eval_prob_binomial()  # P binomial
             return mim
         else:
@@ -121,9 +121,10 @@ def drawAlign(text, outfile, font, size):
     # draw = ImageDraw.Draw(img)
     img.save(outfile)
 
+
 # Alignment threshold
 threshold = -13.8
-    
+
 # Parse input argument
 parser = argparse.ArgumentParser()
 
@@ -168,8 +169,8 @@ peakSeqDir = os.path.join(ivars["supp_data_dir"], "Peak_sequences")
 mirSeqDir = os.path.join(ivars["supp_data_dir"], "miRNA_seq")
 out_dir = os.path.join(ivars["output_dirR"], "03-Report/Summary")
 out_dir_img_root = os.path.join(ivars["output_dirR"],
-                                "04-Dash_app/assets/Alignment",
-                                ivars["ibase"])
+                                "03-Report/Alignment")
+
 dir_exist(out_dir_img_root)
 out_dir_img = os.path.join(out_dir_img_root, "mirmap")
 dir_exist(out_dir_img)

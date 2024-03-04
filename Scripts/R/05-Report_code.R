@@ -503,110 +503,119 @@ if (exists("miRtargetsWideA") && exists("miRtargetsWideB")) {
         miRtargetsWide$tmp <- icol
         setnames(miRtargetsWide, "tmp", col)
     }
-
 } else if (exists("miRtargetsWideA")) {
-    miRtargetsWide <- miRtargetsWideA
+    miRtargetsWide <- miRtargetsWideA |>
+        rename(Score.x = Score) |>
+        mutate(Alignment_mirmap = NA,
+               Score.y = NA) 
+} else if (exists("miRtargetsWideB")) {
+    miRtargetsWide <- miRtargetsWideB |>
+        rename(Score.y = Score) |>
+        mutate(Alignment_global = NA,
+               Score.x = NA)
 } else {
-    miRtargetsWide <- miRtargetsWideB
+    miRtargetsWide <- NULL
 }
 
-## Format comparison column
-i.comparisons <- NULL
-for (i in seq_len(nrow(miRtargetsWide))) {
-    ## Format comparison
-    i.comparison <- miRtargetsWide$Comparison[i]
-    i.samples <- unlist(strsplit(gsub("_and_", "-", i.comparison),
-                                 split = "-"))
-    i.samples2 <- NULL
-    for (j in i.samples) {
-        i.sel <-  sample_list %in% j
-        names(j) <- names(sample_list)[i.sel]
-        i.samples2 <- c(i.samples2, j)
-        i.comp <- mergeVector(i.samples2)
+if (!is.null(miRtargetsWide)) {
+    ## Format comparison column
+    i.comparisons <- NULL
+    for (i in seq_len(nrow(miRtargetsWide))) {
+        ## Format comparison
+        i.comparison <- miRtargetsWide$Comparison[i]
+        i.samples <- unlist(strsplit(gsub("_and_", "-", i.comparison),
+                                     split = "-"))
+        i.samples2 <- NULL
+        for (j in i.samples) {
+            i.sel <-  sample_list %in% j
+            names(j) <- names(sample_list)[i.sel]
+            i.samples2 <- c(i.samples2, j)
+            i.comp <- mergeVector(i.samples2)
+        }
+        i.comp <- mergeVector(ivec=i.samples2, sep2 = " AND <br/>", single = TRUE)
+        i.comparisons <- c(i.comparisons, i.comp)
     }
-    i.comp <- mergeVector(ivec=i.samples2, sep2 = " AND <br/>", single = TRUE)
-    i.comparisons <- c(i.comparisons, i.comp)
+    miRtargetsWide$Comparison <- i.comparisons
+
+    ## Merge link to peak plot
+    cols_sub <- c("Transcript",
+                  "Gene\nplot",
+                  "Peak\nplot",
+                  "Peak(T):Max(C)",
+                  "Feature",
+                  "Gene name",
+                  "Description",
+                  "Comparison",
+                  "Index")
+    pydeg_dt_sub <- dplyr::select(pydeg_dt, all_of(cols_sub))
+    miRtargetsWide <- merge(dplyr::select(miRtargetsWide,
+                                          c("miRNA", "Alignment_global",
+                                            "Score.x",
+                                            "Alignment_mirmap",
+                                            "Score.y",
+                                            "Index")),
+                            pydeg_dt_sub,
+                            by = "Index", all.x = TRUE)[, -1]
+
+    ## Select columns for output
+    miRtargetsWide <- dplyr::select(miRtargetsWide,c("Transcript",
+                                                     "miRNA",
+                                                     "Alignment_global",
+                                                     "Score.x",
+                                                     "Alignment_mirmap",
+                                                     "Score.y",
+                                                     cols_sub[2:8]))
+    ## Add missing-alignment-icon
+    no_link <- paste0("<a  target=_blank >",
+                      fa("ban", width = icon_size, height = icon_size,
+                         fill = "grey"), "</a>")
+
+    isel <- is.na(miRtargetsWide$Alignment_global)
+    miRtargetsWide$Alignment_global[isel] <- no_link
+
+    isel <- is.na(miRtargetsWide$Alignment_mirmap)
+    miRtargetsWide$Alignment_mirmap[isel] <- no_link
+
+    ## Change alignment column name
+    aln_cols <- c("Alignment_global","Alignment_mirmap")
+    setnames(miRtargetsWide,
+             aln_cols,
+             gsub("_", "\n", aln_cols))
+
+
+    miRtargetsWide <- miRtargetsWide[with(miRtargetsWide,
+                                          order(Comparison, -Score.x,
+                                                Score.y)), ]
+
+    ## Change name of score columns
+    setnames(miRtargetsWide, "Score.x", "Alignment\nscore")
+    setnames(miRtargetsWide, "Score.y", "DeltaG\nopen")
+
+    miR.dt <- DT::datatable(miRtargetsWide,
+                            escape = FALSE,
+                            rownames = FALSE,
+                            width = "100%",
+                            filter = "top",
+                            extensions = c("FixedColumns", "Buttons", "RowGroup"),
+                            options = list(
+                                scrollX = TRUE,
+                                scrollY = "500px",
+                                scroller = TRUE,
+                                fixedColumns = list(leftColumns = 1,
+                                                    rightColumns = 1),
+                                columnDefs = list(list(visible=FALSE,
+                                                       targets="Comparison")),
+                                rowGroup = list(dataSrc = ncol(miRtargetsWide) - 1),
+                                dom = "Brtip",
+                                buttons = c("copy", "csv", "excel"),
+                                pageLength = 150
+                            )) %>%
+        formatStyle(
+            "Feature",
+            background = styleEqual(
+                c("3UTR", "CDS", "5UTR"), c("#90ee901a", "#f080801a", "#add8e61a")
+            )
+        ) %>%
+        formatRound(cols2round[5:6], 2)
+    miR.dt
 }
-miRtargetsWide$Comparison <- i.comparisons
-
-## Merge link to peak plot
-cols_sub <- c("Transcript",
-              "Gene\nplot",
-              "Peak\nplot",
-              "Peak(T):Max(C)",
-              "Feature",
-              "Gene name",
-              "Description",
-              "Comparison",
-              "Index")
-pydeg_dt_sub <- dplyr::select(pydeg_dt, all_of(cols_sub))
-miRtargetsWide <- merge(dplyr::select(miRtargetsWide,
-                                      c("miRNA", "Alignment_global",
-                                        "Score.x",
-                                        "Alignment_mirmap",
-                                        "Score.y",
-                                        "Index")),
-                        pydeg_dt_sub,
-                        by = "Index", all.x = TRUE)[, -1]
-
-## Select columns for output
-miRtargetsWide <- dplyr::select(miRtargetsWide,c("Transcript",
-                                                 "miRNA",
-                                                 "Alignment_global",
-                                                 "Score.x",
-                                                 "Alignment_mirmap",
-                                                 "Score.y",
-                                                 cols_sub[2:8]))
-## Add missing-alignment-icon
-no_link <- paste0("<a  target=_blank >",
-             fa("ban", width = icon_size, height = icon_size,
-                fill = "grey"), "</a>")
-
-isel <- is.na(miRtargetsWide$Alignment_global)
-miRtargetsWide$Alignment_global[isel] <- no_link
-
-isel <- is.na(miRtargetsWide$Alignment_mirmap)
-miRtargetsWide$Alignment_mirmap[isel] <- no_link
-
-## Change alignment column name
-aln_cols <- c("Alignment_global","Alignment_mirmap")
-setnames(miRtargetsWide,
-         aln_cols,
-         gsub("_", "\n", aln_cols))
-
-
-miRtargetsWide <- miRtargetsWide[with(miRtargetsWide,
-                                      order(Comparison, -Score.x,
-                                            Score.y)), ]
-
-## Change name of score columns
-setnames(miRtargetsWide, "Score.x", "Alignment\nscore")
-setnames(miRtargetsWide, "Score.y", "DeltaG\nopen")
-
-miR.dt <- DT::datatable(miRtargetsWide,
-                        escape = FALSE,
-                        rownames = FALSE,
-                        width = "100%",
-                        filter = "top",
-                        extensions = c("FixedColumns", "Buttons", "RowGroup"),
-                        options = list(
-                            scrollX = TRUE,
-                            scrollY = "500px",
-                            scroller = TRUE,
-                            fixedColumns = list(leftColumns = 1,
-                                                rightColumns = 1),
-                            columnDefs = list(list(visible=FALSE,
-                                                   targets="Comparison")),
-                            rowGroup = list(dataSrc = ncol(miRtargetsWide) - 1),
-                            dom = "Brtip",
-                            buttons = c("copy", "csv", "excel"),
-                            pageLength = 150
-                        )) %>%
-    formatStyle(
-        "Feature",
-        background = styleEqual(
-            c("3UTR", "CDS", "5UTR"), c("#90ee901a", "#f080801a", "#add8e61a")
-        )
-    ) %>%
-    formatRound(cols2round[5:6], 2)
-miR.dt

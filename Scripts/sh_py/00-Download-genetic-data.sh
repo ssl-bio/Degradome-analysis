@@ -24,6 +24,15 @@ else
     source "$ivars"
 fi
 
+# Enable extended pattern matching
+shopt -s extglob
+
+# #activate conda environment
+eval "$(conda shell.bash hook)"
+source activate "$conda_pydeg_map"
+
+#Abort if get any error
+set -eo pipefail
 
 ##Step counter
 stp=1

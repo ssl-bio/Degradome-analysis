@@ -18,15 +18,14 @@
 
 ## Libraries
 suppressPackageStartupMessages(library(ChIPpeakAnno)) #For shared peak analysis.  toGRanges function
-suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(gsubfn))
 suppressPackageStartupMessages(library(GenomicFeatures))
 suppressPackageStartupMessages(library(rtracklayer))
 suppressPackageStartupMessages(library(pbapply))
 suppressPackageStartupMessages(library(mgsub))
-suppressPackageStartupMessages(library(magrittr))
 suppressPackageStartupMessages(library(doParallel))
 suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(PostPyDeg))
 suppressPackageStartupMessages(library(optparse))
 
@@ -69,7 +68,8 @@ if (file.exists(min_variables)) {
 txdb <- loadDb(file.path(env["supp_data_dir"], "R/txdb_object"))
 
 annoData.gmodel <- toGRanges(txdb, feature = c("geneModel"))
-df.gmodel <- data.frame(annoData.gmodel)
+## df.gmodel <- data.frame(annoData.gmodel)
+df.gmodel <- as_tibble(annoData.gmodel)
 
 ## Change columns 2,3 names to match function argument
 colnames(df.gmodel) <- c("seqnames", "feature_start",
@@ -113,6 +113,7 @@ for (i in seq_along(MF_list)) {
     i.conf <- conf_list[i]
     for (i.comp in comparisons) {
         i.test <- gsub("[0-9]+","",names(i.comp))
+
         ## Directory for output
         i.comp_f <- mgsub::mgsub(i.comp, c("t_", "_c_"), c("", "-"))
         i.conf_f <- gsub("\\.", "_", i.conf)
@@ -124,6 +125,7 @@ for (i in seq_along(MF_list)) {
         ##Avoid re-doing annotaion
         out_file <-  file.path(out_dir, paste0(file.suffix, "_Annotated"))
         input_file  <-  file.path(pydeg_dir, file.suffix2)
+
         ##Test for input and output file
         if (file.exists(out_file) || ! file.exists(input_file)) {
             next
@@ -134,15 +136,17 @@ for (i in seq_along(MF_list)) {
         cat("\tMF = ", i.MF, " conf = ", i.conf, " Set = ", i.test, "\n")
         cat("\t\tLoading", basename(input_file), "\n")
 
-        df  <-  read.table(input_file,
-                           comment.char = "[",
-                           header = TRUE)
 
-        colnames(df)[1] <- "chr"
-
-        ## Add peak width colmun
-        df$peak_width <- df$peak_stop - df$peak_start
-
+        ## Import and parse pydegradome results
+        df_raw <- read_tsv(input_file,
+                           comment = "[",
+                           show_col_types = FALSE)
+        
+        df <- df_raw |>
+            rename(chr = "#chr") |>
+            mutate(peak_width = peak_stop - peak_start,
+                   .after = peak_stop)               
+        
         ## Add annotation
         cat("\t\tAdding annotation...\n")
         ##Find peaks that overlap (within) a feature
@@ -151,6 +155,7 @@ for (i in seq_along(MF_list)) {
             strand = df$strand,
             ranges = IRanges(start = df$peak_start,
                              end = df$peak_stop))
+        
         ##Find peak overlaps (all)
         peak_overlap <- findOverlaps(gr.df,
                                      annoData.gmodel,
@@ -168,19 +173,18 @@ for (i in seq_along(MF_list)) {
         ## df_no <- df[!peak_yes, ]
 
         ##Select matching gene/feature information
-        df.gmodel_sub <- df.gmodel[subjectHits(indx_peak_overlap), ]
-        df.gmodel_sub <- dplyr::select(df.gmodel_sub ,
-                                       all_of(i.cols.tx))
-        df.gmodel_sub$ID <- gsub("\\.[0-9]", "",
-                                 df.gmodel_sub$tx_name)
+        df.gmodel_sub  <- df.gmodel |>
+            slice(subjectHits(indx_peak_overlap)) |>
+            dplyr::select(all_of(i.cols.tx)) |>
+            mutate(ID = gsub("\\.[0-9]", "", tx_name),
+                   .before = 1)
 
         ##Combine data frames [colum-wise]
-        df_annotated <- cbind(df_yes, df.gmodel_sub)
-        df_annotated$indx <- paste0(df_annotated$ID,
-                                    df_annotated$peak_start,
-                                    df_annotated$peak_stop)
-        df_annotated <- df_annotated[with(df_annotated,
-                                          order(indx)),]
+        df_annotated <- tibble(df_yes, df.gmodel_sub) |>
+            mutate(indx = paste0(ID,peak_start,
+                                 peak_stop)) |>
+            arrange(indx) |>
+            relocate(indx, tx_name)
 
         ##Import file with transcript information
         tx_info <- fread(file.path(env["supp_data_dir"],
@@ -189,16 +193,16 @@ for (i in seq_along(MF_list)) {
         tx_name_representative <- tx_info[tx_info$rep_gene == 1, tx_name]
 
 
-        ##remove duplicate peaks based on representative gene model
+        ##Split dataset based on the presence of isoforms 
         dfs.ID <- splitDFbyCol(df_annotated, ref_col = "indx", keep_ref = TRUE)
         df_dup <- dfs.ID$df_dup
         df_uniq <- dfs.ID$df_uniq
 
         ## Work on genes with isoforms
         dup_indx <- unique(df_dup$indx)
-        df_np_list <- list()
-        for(k in seq_along(dup_indx)) {
-            i.indx <- dup_indx[k]
+        cl <- makeCluster(as.numeric(env$core))
+        registerDoParallel(cl)
+        df_np_list <- foreach(i.indx = dup_indx) %dopar% {
             temp_df <- df_dup[df_dup$indx == i.indx,]
             i.log <- temp_df$tx_name %in% tx_name_representative
             if(sum(i.log) == 1) {
@@ -209,15 +213,17 @@ for (i in seq_along(MF_list)) {
                 temp_df <- temp_df[1,]
                 temp_df$rep_gene_note <- "Doesn't match"
             }
-            df_np_list[[k]] <- temp_df
+            temp_df
         }
-        df_np <- do.call(rbind, df_np_list)
+        stopCluster(cl)
+        gc()
+        df_np <- do.call(bind_rows, df_np_list)
 
         ## Work on genes without isoform
         df_uniq$rep_gene_note <- "Matches"
 
-        df_annotated <- rbind(df_uniq,df_np)
-        df_annotated <- dplyr::select(df_annotated, -indx)
+        df_annotated <- bind_rows(df_uniq, df_np) |>
+            dplyr::select(-indx)
 
         ##Merge information to df.gmodel
         df_annotated <- merge(#
@@ -234,10 +240,8 @@ for (i in seq_along(MF_list)) {
             by = "tx_name", all.x  = TRUE)
 
         ## Remove entries with NAs and sort
-        df_annotated <- df_annotated[complete.cases(df_annotated),]
-        df_annotated <- df_annotated[with(df_annotated,
-                                          order(tx_name,
-                                                peak_start)), ]
+        df_annotated <- df_annotated[complete.cases(df_annotated),] |>
+            arrange(tx_name, peak_start)
         
         write.table(df_annotated,
                     out_file ,
@@ -271,23 +275,20 @@ for (i.comp in comparisons) {
             next
         }
         cat("\tMF = ",i.MF, " conf = ", i.conf, " Set = ", i.test, "\n")
-        df <- read.table(input_file, header = TRUE)
-        
-        ## Select only complete cases and
-        ## those entries with ID                        
-        df.ID <- df[grepl("^AT",df$ID),]
+        ## df <- read.table(input_file, header = TRUE)
+        df <- read_tsv(input_file,
+                       show_col_types = FALSE)
 
-        ## Sort based on peak_start
-        df.sort <- df.ID[with(df.ID, order(ID, peak_start)),]
+        ## Select entries with ID, sort and create index for merging
+        df.sort <- df[grepl("^AT",df$ID),] |>
+            arrange(ID, peak_start) |>
+            mutate(indx_dup = paste0(ID, chr, strand,
+                                     gene_region_start,
+                                     gene_region_end)) |>
+            relocate(gene_region_start, gene_region_end,
+                     .after = peak_stop)
 
-        ## Create a indx vector
-        df.sort$indx_dup <-  paste0(df.sort$ID,
-                                    df.sort$chr,
-                                    df.sort$strand,
-                                    df.sort$gene_region_start,
-                                    df.sort$gene_region_end)
-
-        ## Count and select duplicated entries
+        ## Split entries based on number of peaks
         dfs.ID <- splitDFbyCol(df.sort, "indx_dup")
         df_dup <- dfs.ID$df_dup
         dup_ID <- unique(df_dup$tx_name)
@@ -295,39 +296,48 @@ for (i.comp in comparisons) {
         if (length(dup_ID)==0) {
             next
         }
-        for (k in seq_along(dup_ID)) {
-            i.id <- dup_ID[k]
+        
+        cl <- makeCluster(as.numeric(env$core))
+        registerDoParallel(cl)
+        df_np_list <- foreach(i.id = dup_ID) %dopar% {
             temp_df <- df_dup[df_dup$tx_name == i.id,]
-            g.start <- temp_df$gene_region_start[1]
-            g.end <- temp_df$gene_region_end[1]
-            i.start <- temp_df$peak_stop+1
-            i.end <- temp_df$peak_start-1
-            if(i.end[1]<g.start) {
-                g.start <- NULL
-                i.end <- i.end[-1]
+            gene_start <- temp_df$gene_region_start[1]
+            gene_end <- temp_df$gene_region_end[1]
+            np_start <- temp_df$peak_stop+1
+            np_end <- temp_df$peak_start-1
+
+            ## Test if any non-peak coordinates are outside gene range
+            ## If so, remove them as they are not within a feature
+            if(np_end[1]<gene_start) {
+                gene_start <- NULL
+                np_end <- np_end[-1]
             }
-            if (i.start[length(i.start)]>g.end) {
-                g.end <- NULL
-                i.start <- i.start[-length(i.start)]
+            if (np_start[length(np_start)]>gene_end) {
+                gene_end <- NULL
+                np_start <- np_start[-length(np_start)]
             }
-            np.start <- c(g.start,i.start)
-            np.stop <- c(i.end,g.end)
+
+            ## Build a table with coordinates
+            np.start <- c(gene_start ,np_start)
+            np.stop <- c(np_end,gene_end)
             i.chr <- temp_df$chr[1]
             i.strand <- temp_df$strand[1]
             i.ID <- temp_df$tx_name[1]
-            tmp_df_np_coor <- data.table(chr = i.chr,
+            tmp_df_np_coor <- data.frame(chr = i.chr,
                                          strand = i.strand,
                                          ID = i.id,
                                          non_peak_start = np.start,
                                          non_peak_stop = np.stop)
 
-                                        #Remove negative ranges
+            ##Remove negative ranges
             i.diff <- tmp_df_np_coor$non_peak_stop - tmp_df_np_coor$non_peak_start
             i.log <- i.diff<0
             tmp_df_np_coor <- tmp_df_np_coor[!i.log,]
 
-            df_np_list[[k]] <- tmp_df_np_coor
+            ## df_np_list[[k]] <- tmp_df_np_coor
+            tmp_df_np_coor
         } #Loop over ID
+        stopCluster(cl)
         df_np <- do.call(rbind, df_np_list)
         write.table(df_np, out_file,
                     sep = "\t", row.names = FALSE, quote = FALSE )
@@ -357,14 +367,12 @@ for (i in seq_along(MF_list)) {
         cat("\tMF = ",i.MF, " conf = ", i.conf, " Set = ", i.test, "\n")
         cat("\t\tLoading", basename(input_file), "\n")
         cat("\t\tProcessing ",i.comp, "...\n")
-        df <- read.table(input_file,
-                         sep  =  "\t",
-                         comment.char = "",
-                         row.names = NULL,
-                         header = TRUE)
+        df_raw <- read_tsv(input_file,
+                           comment = "",
+                           show_col_types = FALSE)
 
         cat("\t\tCheck Ref file & Add max read in peak\n")
-        df <- getMaxPeak(df, i.comp)
+        df <- getMaxPeak(df_raw, i.comp)
 
         ## Add S/N ratio
         cat("\t\tAdd S/N ratio \n")
@@ -372,15 +380,12 @@ for (i in seq_along(MF_list)) {
         cat("Check ref & Add highest signal outside of the peak region\n")
         ##--------------------------------------------------
         ## Subset entries with ID
-        df.ID <- df[grepl("^AT", df$ID), ]
-
         ## Create indx_dup to select duplicates
-        df.ID$indx_dup <-  paste0(df.ID$ID,
-                                  df.ID$chr,
-                                  df.ID$strand,
-                                  df.ID$gene_region_start,
-                                  df.ID$gene_region_end)
-
+        df.ID <- df[grepl("^AT", df$ID), ] |>
+            mutate(indx_dup = paste0(ID, chr, strand,
+                                  gene_region_start,
+                                  gene_region_end))
+        
         dfs.ID <- splitDFbyCol(df.ID, "indx_dup")
         df_dup <- dfs.ID$df_dup
         df_uniq <- dfs.ID$df_uniq
@@ -462,13 +467,12 @@ for (i in seq_along(MF_list)) {
         df <- as.data.table(df)
         df[max_np_gene == 0, max_np_gene := 1]
         ##--------------------------------------------------
-        ##Calculate max_non_peak_ratio
+        ##Calculate max_non_peak_ratio and sort
         cat("Calculate max_non_peak_ratio\n")
-        df$max_non_peak_ratio <- df$max_peak / df$max_np_gene
-
-        ## Sort and save table
-        df <- df[with(df, order(tx_name,
-                            peak_start)), ]
+        df <- df |>
+            mutate(max_non_peak_ratio = max_peak / max_np_gene) |>
+            arrange(tx_name, peak_start)
+        
         cat("Save table \n")
         write.table(df, out_file,
                     sep = "\t", row.names = FALSE)
@@ -503,7 +507,9 @@ for (i in seq_along(MF_list)) {
             if (!file.exists(input_file)) {
                 next
             }
-            df <- fread(input_file)
+
+            df <- read_tsv(input_file,
+                           show_col_types = FALSE)
 
             ##Peak number
             cat("Peak number \n")
@@ -720,11 +726,10 @@ for (i in seq_along(MF_list)) {
                     df = pydegSingleRep_peak,
                     i.comp = i.comp.other)
 
-                ##Calculate max_non_peak_ratio
-                pydegSingleRep_peak$max_non_peak_ratio <- pydegSingleRep_peak$max_peak / pydegSingleRep_peak$max_np_gene
-
-                ##Fill max_count_test with NA
-                pydegSingleRep_peak$max_count_test <- NA
+                ## Calculate max_non_peak_ratio and fill max_count_test with NA
+                pydegSingleRep_peak <- pydegSingleRep_peak |>
+                    mutate(max_non_peak_ratio = max_peak / max_np_gene) |>
+                    mutate(max_count_test = NA)
 
                 ##rename columns
                 setnames(pydegSingleRep_peak,

@@ -34,10 +34,10 @@ source activate pydeg_map
 #Abort if get any error
 set -eo pipefail
 
-conda install -c bioconda bioawk fastqc trim-galore bedtools seqkit bowtie2 picard samtools biopython qualimap htseq deeptools -y
+conda install -c bioconda bioawk fastqc trim-galore bedtools seqkit bowtie2 picard samtools biopython qualimap htseq deeptools entrez-direct sra-tools -y
 conda install -c bioconda agat #Should be done separately to avoid hanging
 conda install -c anaconda pandas pilow tk pip -y
-conda install -c conda-forge dash dash-bootstrap-components pdf2image -y
+conda install -c conda-forge dash dash-bootstrap-components pdf2image pigz -y
 conda install -c plotly plotly plotly_express -y
 pip install dash-dangerously-set-inner-html dash_bootstrap_templates nbib dash_breakpoints
 
@@ -49,7 +49,7 @@ conda create --name pydeg_R python=3.11.4 -y
 source activate pydeg_R
 set -u
 
-conda install -c conda-forge pkg-config=0.29.2 r-curl=5.0.1 r-base=4.3.0 -y
+conda install -c conda-forge pkg-config=0.29.2 r-curl=5.0.1 r-base=4.3.1 -y
 
 set +u
 conda deactivate
@@ -134,12 +134,15 @@ python app.py
 
 Then, the report can be analyzed on a web browser on the address, `localhost:8050`
 
-A live demo can be found at <https://sslbio.pythonanywhere.com/> username: guest password: sslbio
+A live demo can be found at <https://sslbio.pythonanywhere.com/>
+
+
+## Modifications
 
 
 ### Regarding the files [August - October 2023]
 
-For this purpose of generating the report following files were included:
+To produce a plotly dash app the following files were included
 
 -   `Env_variables/PostPydeg_factor_description.tsv`: Tab-separated file with details of the analysis.
 -   `Env_variables/custom.css`: css file specifying some style options for the report
@@ -154,13 +157,19 @@ The files above are in an early stage and some work is needed to make the proces
 -   [X] Improve the quality of the report (app.py)
 
 
+### Fixing the plotly dash app [March 2024]
+
+A previous version of the plotly dash app would fail to run in the following cases
+
+-   A project name different from `Zhang-2021` was used
+-   One or both miRNA alignments were not produced The former was caused because one of the app files (*i.e.* `test_cases.py` ) had the project name hard coded. Now this is replaced by the project name used when running `06-Process_data.py`. The latter was solved by including a number of tests for missing alignment data. The missing data was observed when running the analysis on a sub-sample of the original data which caused the top categories to be absent.
+
+
 ## Further details
 
 For further details see this [post](https://ssl-blog.netlify.app/posts/degradome-analysis/degradome-code/)
 
 
 ## References
-
-<style>.csl-entry{text-indent: -1.5em; margin-left: 1.5em;}</style><div class="csl-bib-body">
   <div class="csl-entry"><a id="citeproc_bib_item_1"></a>Gaglia, Marta Maria, Chris H. Rycroft, and Britt A. Glaunsinger. 2015. “Transcriptome-Wide Cleavage Site Mapping on Cellular mRNAs Reveals Features Underlying Sequence-Specific Cleavage by the Viral Ribonuclease SOX.” Edited by Pinghui Feng. <i>Plos Pathogens</i> 11 (12): e1005305. doi:<a href="https://doi.org/10.1371/journal.ppat.1005305">10.1371/journal.ppat.1005305</a>.</div>
 </div>

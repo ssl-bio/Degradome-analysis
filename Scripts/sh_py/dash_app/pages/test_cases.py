@@ -88,7 +88,7 @@ layout = html.Main([
             dataSet_cards
         ], color='primary'),
         dcc.Store(
-            data='Zhang-2021',
+            data='<ibase>',
             id='dataSet_name'
         ),
         dcc.Store(
@@ -797,7 +797,10 @@ def import_data(name, ivars, pysettings):
     data_dict = bib.import_data(name, ivars, pysettings)
     pydeg_data = data_dict["pydeg_df"]
     miRNA_data = data_dict["miRNA_df"]
-    return pydeg_data.to_dict('records'), miRNA_data.to_dict('records')
+    if miRNA_data is None:
+        return pydeg_data.to_dict('records'), None
+    else:
+        return pydeg_data.to_dict('records'), miRNA_data.to_dict('records')
 
 
 @callback(
@@ -1082,9 +1085,13 @@ def render_tab_content(active_cell, pydeg_data, miRNA_data, tab):
     category = cat1 + "-" + cat2
     header = f'Decay plot for {transcript} ({category}) \
 from comparison {comparison}'
-
-    df = pd.DataFrame.from_records(miRNA_data)
-    dff = df.loc[df['Transcript'] == transcript]
+    if miRNA_data is None:
+        dff = []
+        mirna_df = None
+    else:
+        df = pd.DataFrame.from_records(miRNA_data)
+        dff = df.loc[df['Transcript'] == transcript]
+        mirna_df = dff.to_dict('records')
     if tab == 'gene_plot':
         gene_plot_link = pydeg_df.at[row, 'gene_plot_link']
         if isinstance(gene_plot_link, str):
@@ -1155,12 +1162,12 @@ from comparison {comparison}'
         else:
             # No candidates found
             decay_plot = html.Div(
-                html.P(f'No alignment was obtained for\
+                html.P(f'No alignment was obtained for \
 the peak of transcript {transcript}',
                        className='no_output_w')
             )
 
-    return decay_plot, dff.to_dict('records')
+    return decay_plot, mirna_df
 
 
 @callback(

@@ -14,13 +14,12 @@
 
 ## Libraries
 suppressPackageStartupMessages(library(stringr))
-suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(mgsub))
-suppressPackageStartupMessages(library(magrittr))
 suppressPackageStartupMessages(library(GenomicFeatures))
 suppressPackageStartupMessages(library(rtracklayer))
 suppressPackageStartupMessages(library(doParallel))
+suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(PostPyDeg))
 suppressPackageStartupMessages(library(optparse))
 
@@ -113,9 +112,12 @@ for (comp_list in comp_pair_list) {
         }
         cat("Filtering and Classification 1\n")
         cat("\tMF = ", i.MF, " conf = ", i.conf, " Set = ",  i.test, "\n")
-        pydeg <- fread(input_file,
-                       stringsAsFactors = FALSE,
-                       header = TRUE, sep = "\t")
+
+        pydeg <- read_tsv(input_file,
+                          show_col_types = FALSE)
+        ## pydeg <- fread(input_file,
+        ##                stringsAsFactors = FALSE,
+        ##                header = TRUE, sep = "\t")
         ##--------------------------------------------------
         ## Filtering parameters
         ##  Max non_peak_ratio
@@ -130,48 +132,72 @@ for (comp_list in comp_pair_list) {
         peak_width_thr <- ceiling(mean(pydeg$width)) + 1
         ##--------------------------------------------------
         ## Filter data
-        ## Select only rows with peak:non-peak
-        ## ratio values
-        pydeg2 <- pydeg[!is.na(pydeg$max_non_peak_ratio_1) &
-                        !is.na(pydeg$max_non_peak_ratio_2), ]
-
-        ## Filter by width and max_peak count
-        ## pydeg2 <- pydeg2[pydeg2$max_peak_1 > max_peak_thr & pydeg2$max_peak_2 > max_peak_thr &
-        ## pydeg2$width < peak_width_thr, ]
-        pydeg2 <- pydeg2[pydeg2$max_peak_1 > max_peak_thr &
-                         pydeg2$max_peak_2 > max_peak_thr, ]
+        pydeg2 <- pydeg |>
+            filter(!is.na(max_non_peak_ratio_1) &
+                   !is.na(max_non_peak_ratio_2)) |>
+            filter(max_peak_1 > max_peak_thr &
+                   max_peak_2 > max_peak_thr)
 
         ##--------------------------------------------------
         ## Classify into categories
         ## Category 1
-        pydeg2[shared == 3 & max_non_peak_ratio_1 > 1 &
-               max_non_peak_ratio_2 > 1,
-               category_1 := 1]
+        ## pydeg2[shared == 3 & max_non_peak_ratio_1 > 1 &
+        ##        max_non_peak_ratio_2 > 1,
+        ##        category_1 := 1]
+        pydeg2 <- pydeg2 |>
+            mutate(category_1 = if_else(shared == 3 &
+                                        max_non_peak_ratio_1 > 1 &
+                                        max_non_peak_ratio_2 > 1,
+                               1, NA))
 
         ## Category 2
-        pydeg2[shared == 3 & max_non_peak_ratio_1 >= 0.8 &
-               max_non_peak_ratio_2 >= 0.8 &
-               max_non_peak_ratio_1 <= 1 &
-               max_non_peak_ratio_2 <= 1,
-               category_1 := 2]
+        ## pydeg2[shared == 3 & max_non_peak_ratio_1 >= 0.8 &
+        ##        max_non_peak_ratio_2 >= 0.8 &
+        ##        max_non_peak_ratio_1 <= 1 &
+        ##        max_non_peak_ratio_2 <= 1,
+        ##        category_1 := 2]
+        pydeg2 <- pydeg2 |>
+            mutate(category_1 = if_else(shared == 3 &
+                                        max_non_peak_ratio_1 >= 0.8 &
+                                        max_non_peak_ratio_2 >= 0.8 &
+                                        max_non_peak_ratio_1 <= 1 &
+                                        max_non_peak_ratio_2 <= 1,
+                               2, category_1))
 
         ## Category 3
-        pydeg2[shared == 3 & max_non_peak_ratio_1 >= 0.7 &
-               max_non_peak_ratio_2 >= 0.7 &
-               max_non_peak_ratio_1 < 0.8 &
-               max_non_peak_ratio_2 < 0.8,
-               category_1 := 3]
-
+        ## pydeg2[shared == 3 & max_non_peak_ratio_1 >= 0.7 &
+        ##        max_non_peak_ratio_2 >= 0.7 &
+        ##        max_non_peak_ratio_1 < 0.8 &
+        ##        max_non_peak_ratio_2 < 0.8,
+        ##        category_1 := 3]
+        pydeg2 <- pydeg2 |>
+            mutate(category_1 = if_else(shared == 3 &
+                                        max_non_peak_ratio_1 >= 0.7 &
+                                        max_non_peak_ratio_2 >= 0.7 &
+                                        max_non_peak_ratio_1 < 0.8 &
+                                        max_non_peak_ratio_2 < 0.8,
+                                        3, category_1))
+        
         ## Category 4
-        pydeg2[shared %in% 1:2 &
-               ((max_non_peak_ratio_1 >= 0.8 &
-                 max_non_peak_ratio_2 >= 1) |
-                (max_non_peak_ratio_1 >= 1 &
-                 max_non_peak_ratio_2 >= 0.8)),
-               category_1 := 4]
+        ## pydeg2[shared %in% 1:2 &
+        ##        ((max_non_peak_ratio_1 >= 0.8 &
+        ##          max_non_peak_ratio_2 >= 1) |
+        ##         (max_non_peak_ratio_1 >= 1 &
+        ##          max_non_peak_ratio_2 >= 0.8)),
+        ##        category_1 := 4]
+        pydeg2 <- pydeg2 |>
+            mutate(category_1 = if_else(shared %in% 1:2 &
+                                        ((max_non_peak_ratio_1 >= 0.8 &
+                                          max_non_peak_ratio_2 >= 1) |
+                                         (max_non_peak_ratio_1 >= 1 &
+                                          max_non_peak_ratio_2 >= 0.8)),
+                                        4, category_1))
 
         ## Set NA in category 1 as 0
-        pydeg2[is.na(category_1), category_1:= 0 ]
+        ## pydeg2[is.na(category_1), category_1:= 0 ]
+        pydeg2 <- pydeg2 |>
+            mutate(category_1 = if_else(is.na(category_1),
+                                        0, category_1))
 
         ## ------------------------------
         cat("Classification 2\n")
@@ -193,8 +219,6 @@ for (comp_list in comp_pair_list) {
         bigwigs <- dg_bigwig_all[sel_bam]
 
         ## Subsample with only relevant columns
-        
-
         ## Get max transcript ctrl
         cat("Get the highest signal in the control sample\n")
         gene_df <- dplyr::select(pydeg2, all_of(cols_indexG))
@@ -263,13 +287,10 @@ for (comp_list in comp_pair_list) {
         ## Merge with original dataframe
         cat("Merge with input\n")
         ## create an indx for merging
-        pydeg2 <- within(pydeg2,
-                         indx <- paste(tx_name,
-                                       chr,
-                                       strand,
-                                       peak_start,
-                                       peak_stop,
-                                       sep = "_"))
+        pydeg2 <- pydeg2 |>
+            mutate(indx = paste(tx_name, chr, strand,
+                                peak_start, peak_stop,
+                                sep = "_"))
 
 
         pydeg2 <- merge(pydeg2,
@@ -293,23 +314,33 @@ for (comp_list in comp_pair_list) {
         ## Median of ratios
         i.RM <- median(pydeg2$ratioPTx)
         ## Category 1
-        pydeg2[ratioPTx > 1,
-               category_2 := "A"]
-
+        ## pydeg2[ratioPTx > 1,
+        ##        category_2 := "A"]
+        pydeg2 <- pydeg2 |>
+            mutate(category_2 = if_else(ratioPTx > 1,
+                                        "A", NA))
         ## Category 2
-        pydeg2[ratioPTx <= 1 &
-               ratioPTx > i.RM &
-               MorePeaks>0,
-               category_2 := "B"]
+        ## pydeg2[ratioPTx <= 1 &
+        ##        ratioPTx > i.RM &
+        ##        MorePeaks>0,
+        ##        category_2 := "B"]
+        pydeg2 <- pydeg2 |>
+            mutate(category_2 = if_else(ratioPTx <= 1 &
+                                        ratioPTx > i.RM &
+                                        MorePeaks>0,
+                                        "B", category_2))
 
         ## Set NA in category as 0
-        pydeg2[is.na(category_2), category_2 := "C"]
+        ## pydeg2[is.na(category_2), category_2 := "C"]
+        pydeg2 <- pydeg2 |>
+            mutate(category_2 = if_else(is.na(category_2),
+                                        "C", category_2))
 
         ##--------------------------------------------------
         ## Sort and write filtered pydeg data frame
-        pydeg2 <- pydeg2[with(pydeg2,
-                              order(tx_name,
-                                    peak_start)), ]
+        pydeg2 <- pydeg2 |>
+            arrange(tx_name, peak_start)
+        
         fwrite(pydeg2, out_file, quote = FALSE, sep = "\t")
         cat("\t\tWrote",
             paste(i.comp_f, i.conf_f, "4", i.MF, sep = "_"), "\n")
@@ -356,9 +387,8 @@ for (comp_list in comp_pair_list) {
 ## Total before and after filtering
 out_file <- file.path(summary_dir, "Peak_counts_BeforeAfter_Filtering")
 if (!file.exists(out_file)) {
-    peak_counts_i.comp <- do.call(rbind, list.peak.counts)
-    peak_counts_i.comp <- peak_counts_i.comp[with(peak_counts_i.comp, order(Settings)), ]
-
+    peak_counts_i.comp <- do.call(bind_rows, list.peak.counts) |>
+        arrange(Settings)
 
     if (!is.null(peak_counts_i.comp) &&
         nrow(peak_counts_i.comp) > 0) {
@@ -372,10 +402,8 @@ if (!file.exists(out_file)) {
 ## Peaks per categories
 out_file <- file.path(summary_dir, "Peak_counts_classification-1")
 if (!file.exists(out_file)) {
-    peak_counts_cat1_i.comp <- do.call(rbind, list.peak.cat1.counts)
-    peak_counts_cat1_i.comp <- peak_counts_cat1_i.comp[with(peak_counts_cat1_i.comp, order(Settings)), ]
-
-
+    peak_counts_cat1_i.comp <- do.call(bind_rows, list.peak.cat1.counts) |>
+        arrange(Settings)
 
     if (!is.null(peak_counts_cat1_i.comp) &&
         nrow(peak_counts_cat1_i.comp) > 0) {
@@ -389,11 +417,8 @@ if (!file.exists(out_file)) {
 ## Peaks per categories
 out_file <- file.path(summary_dir, "Peak_counts_classification-2")
 if (!file.exists(out_file)) {
-    peak_counts_cat2_i.comp <- do.call(rbind, list.peak.cat2.counts)
-    peak_counts_cat2_i.comp <- peak_counts_cat2_i.comp[with(peak_counts_cat2_i.comp,
-                                                            order(Settings)), ]
-
-
+    peak_counts_cat2_i.comp <- do.call(bind_rows, list.peak.cat2.counts) |>
+        arrange(Settings)
 
     if (!is.null(peak_counts_cat2_i.comp) &&
         nrow(peak_counts_cat2_i.comp) > 0) {
@@ -438,9 +463,8 @@ for (i in seq_along(MF_list)) {
     }
     ## Sort and write data table with less columns
     if (!is.null(pydeg_all) && nrow(pydeg_all)>0) {
-        pydeg_all <- pydeg_all[with(pydeg_all,
-                                    order(tx_name,
-                                          peak_start)), ]
+        pydeg_all <- pydeg_all |>
+            arrange(tx_name, peak_start)
         fwrite(pydeg_all, pydeg_output_f, quote = FALSE, sep = '\t')
     }
 }

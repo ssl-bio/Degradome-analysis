@@ -5,16 +5,11 @@
 
 ## Libraries
 suppressPackageStartupMessages(library(here))
-suppressPackageStartupMessages(library(dplyr))
-suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(mgsub))
-suppressPackageStartupMessages(library(magrittr))
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(DT))
 suppressPackageStartupMessages(library(rtracklayer))
-suppressPackageStartupMessages(library(purrr))
 suppressPackageStartupMessages(library(RVenn))
-suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(biomaRt))
 suppressPackageStartupMessages(library(Gviz))
 suppressPackageStartupMessages(library(Cairo))
@@ -22,6 +17,7 @@ suppressPackageStartupMessages(library(GenomicFeatures))
 suppressPackageStartupMessages(library(Biostrings))
 suppressPackageStartupMessages(library(RColorBrewer))
 suppressPackageStartupMessages(library(doParallel))
+suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(PostPyDeg))
 suppressPackageStartupMessages(library(optparse))
 
@@ -198,8 +194,11 @@ for (i in seq_along(MF_list)) {
                     max_peak_distace <- max(p_stop) - min(p_start)
                     plot_offset <- max(40, round((min_plot_width -
                                                   max_peak_distace) / 2))
-                    pydeg_plot.na$gene_region_start <- max(0, min(p_start) - plot_offset)
-                    pydeg_plot.na$gene_region_end <- max(p_stop) + plot_offset
+                    ## pydeg_plot.na$gene_region_start <- max(0, min(p_start) - plot_offset)
+                    ## pydeg_plot.na$gene_region_end <- max(p_stop) + plot_offset
+                    pydeg_plot.na <- pydeg_plot.na |>
+                        mutate(gene_region_start = max(0, min(p_start) - plot_offset)) |>
+                        mutate(gene_region_end <- max(p_stop) + plot_offset)
                 }
 
                 pydeg_plot.p1 <- pydeg_plot[!sel.na, ]
@@ -208,10 +207,8 @@ for (i in seq_along(MF_list)) {
             setDF(pydeg_plot)
 
             ##Sort dataframe by txRatio
-            pydeg_plot <- pydeg_plot[with(pydeg_plot,
-                                          order(category_1,
-                                                category_2,
-                                                -ratioPTx)), ]
+            pydeg_plot <- pydeg_plot |>
+                arrange(category_1, category_2, desc(ratioPTx))
 
             if (nrow(pydeg_plot) < Nplots) {
                 np <- nrow(pydeg_plot)

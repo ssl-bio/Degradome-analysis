@@ -64,13 +64,13 @@ def process_miRNAData(files_list):
         iconf = ifile.split("-")[2].split(".")[0]
         iconf = float(iconf.replace("_", "."))
         pydeg_settings_label = f"MF: {iMF} - conf: {iconf}"
-
         df_wide["pydeg_settings_label"] = pydeg_settings_label
+        df_wide['MF'] = iMF
+        df_wide['conf'] = iconf
         df_wide.index = range(0, len(df_wide))
         df_list.append(df_wide)
 
     df_merged = pd.concat(df_list)
-
     return df_merged
 
 
@@ -115,10 +115,12 @@ def set_plotLink_mirna(df, align_type, base_name):
     """
     df.index = range(0, len(df))
     tx_list = [itx.replace(".", "_") for itx in df['Transcript']]
+    conf_list = [str(iconf).replace(".", "_") for iconf in df['conf']]
+    mf_list = [str(iMF)+".png" for iMF in df['MF']]
     path_list = [[f"Aln_{align_type}"]*len(df),
                  tx_list, df['miRNA'],
-                 [iconf.replace(".", "_")]*len(df),
-                 [iMF+".png"]*len(df)]
+                 conf_list,
+                 mf_list]
     path_list_t = list(map(list, zip(*path_list)))
 
     # Convert transposed list to DataFrame
@@ -202,6 +204,12 @@ for idir in idirs:
     if (not os.path.exists(ipath)):
         os.makedirs(ipath)
 
+align_dir = os.path.join(ivars['output_dirR'],
+                         "04-Dash_app/assets/Alignment",
+                         ivars['ibase'])
+if (not os.path.exists(align_dir)):
+    os.makedirs(align_dir)
+
 # Copy files to the dash app folder
 shutil.copytree(os.path.join('Scripts/sh_py/dash_app'),
                 output_dir, dirs_exist_ok=True)
@@ -217,6 +225,20 @@ shutil.copytree(os.path.join('Env_variables', 'Images'),
                 os.path.join(output_dir, 'assets/Images'),
                 dirs_exist_ok=True)
 
+shutil.copytree(os.path.join(ivars['output_dirR'],
+                             '03-Report/Alignment'),
+                align_dir, dirs_exist_ok=True)
+
+# Replace basename on test_cases.py
+py_file = os.path.join(output_dir, 'pages', 'test_cases.py')
+with open(py_file, 'r') as file:
+  filedata = file.read()
+
+filedata = filedata.replace('<ibase>', ivars['ibase'])
+
+with open(py_file, 'w') as file:
+  file.write(filedata)
+  
 # Convert plots from pdf to jpg
 for idir in dplot_dirs:
     dplot_dir = os.path.join(dplot_path, idir)
@@ -253,9 +275,11 @@ for i in range(0, len(pooledFiles)):
         # Treat category_1 as factor
         custom_order1 = [1, 2, 3, 4, 0]
         custom_order2 = ['A', 'B', 'C']
-        df_comparison['category_1'] = df_comparison['category_1'].astype(
-            pd.CategoricalDtype(categories=custom_order1,
-                                ordered=True))
+        df_comparison.loc[:, 'category_1'] =\
+            df_comparison['category_1'].astype(
+                pd.CategoricalDtype(
+                    categories=custom_order1,
+                    ordered=True))
         # Separate each unique combination of categories 1 and 2
         # and rank plots based on the ratio of peak:transcript
         cat1 = pd.Series(df_comparison['category_1'].unique())
@@ -379,99 +403,132 @@ miRNAFiles_mirmap = [
 ]
 
 # Add link to existing plots
-df_miRNAalignment_global = process_miRNAData(miRNAFiles_global)
-link_plot = set_plotLink_mirna(df_miRNAalignment_global,
-                               'global', ivars['ibase'])
-link_test = [os.path.isfile(os.path.join(output_dir, ilink)) for
-             ilink in link_plot]
-df_miRNAalignment_global['global_link'] = np.where(link_test,
-                                                   link_plot, np.nan)
+if len(miRNAFiles_global) > 0:
+    df_miRNAalignment_global = process_miRNAData(miRNAFiles_global)
+    link_plot = set_plotLink_mirna(df_miRNAalignment_global,
+                                   'global', ivars['ibase'])
+    link_test = [os.path.isfile(os.path.join(output_dir, ilink)) for
+                 ilink in link_plot]
+    df_miRNAalignment_global['global_link'] = np.where(link_test,
+                                                       link_plot, np.nan)
 
-df_miRNAalignment_mirmap = process_miRNAData(miRNAFiles_mirmap)
-link_plot = set_plotLink_mirna(df_miRNAalignment_mirmap,
-                               'mirmap', ivars['ibase'])
-link_test = [os.path.isfile(os.path.join(output_dir, ilink)) for
-             ilink in link_plot]
-df_miRNAalignment_mirmap['mirmap_link'] = np.where(link_test,
-                                                   link_plot, np.nan)
+if len(miRNAFiles_mirmap) > 0:
+    df_miRNAalignment_mirmap = process_miRNAData(miRNAFiles_mirmap)
+    link_plot = set_plotLink_mirna(df_miRNAalignment_mirmap,
+                                   'mirmap', ivars['ibase'])
+    link_test = [os.path.isfile(os.path.join(output_dir, ilink)) for
+                 ilink in link_plot]
+    df_miRNAalignment_mirmap['mirmap_link'] = np.where(link_test,
+                                                       link_plot, np.nan)
 
-# Create an index column for merging
-icols = ["Comparison", "pydeg_settings_label", "Transcript", "miRNA"]
-df_miRNAalignment_global["index"] = (
-    df_miRNAalignment_global[icols].astype(str).apply("_".join, axis=1)
-)
-df_miRNAalignment_mirmap["index"] = (
-    df_miRNAalignment_mirmap[icols].astype(str).apply("_".join, axis=1)
-)
-
-df_miRNAalignment_all = pd.merge(
-    df_miRNAalignment_global, df_miRNAalignment_mirmap, on="index", how="outer"
-)
-
-# Remove duplicated columns (ending in _x & _y)
-for icol in icols:
-    iregex = icol + ".*"
-    df_col = df_miRNAalignment_all.filter(regex=iregex).columns.to_list()
-    df_miRNAalignment_all = merge_columns(
-        df_miRNAalignment_all, df_col[0], df_col[1],
-        df_col[0].rsplit('_', 1)[0]  # split from right
+if 'df_miRNAalignment_global' in locals() and \
+   'df_miRNAalignment_mirmap' in locals():
+    # Create an index column for merging
+    icols = ["Comparison", "pydeg_settings_label", "Transcript", "miRNA"]
+    df_miRNAalignment_global["index"] = (
+        df_miRNAalignment_global[icols].astype(str).apply("_".join, axis=1)
     )
+    df_miRNAalignment_mirmap["index"] = (
+        df_miRNAalignment_mirmap[icols].astype(str).apply("_".join, axis=1)
+    )
+
+    df_miRNAalignment_all = pd.merge(
+        df_miRNAalignment_global, df_miRNAalignment_mirmap,
+        on="index", how="outer"
+    )
+
+    # Remove duplicated columns (ending in _x & _y)
+    for icol in icols:
+        iregex = icol + ".*"
+        df_col = df_miRNAalignment_all.filter(regex=iregex).columns.to_list()
+        df_miRNAalignment_all = merge_columns(
+            df_miRNAalignment_all, df_col[0], df_col[1],
+            df_col[0].rsplit('_', 1)[0]  # split from right
+        )
+
+elif 'df_miRNAalignment_global' in locals():
+    df_miRNAalignment_all = df_miRNAalignment_global.rename(
+        columns={'Score': 'Score_x'})
+    df_miRNAalignment_all['Score_y'] = pd.NA
+    df_miRNAalignment_all['mirmap_link'] = pd.NA
+
+elif 'df_miRNAalignment_mirmap' in locals():
+    df_miRNAalignment_all = df_miRNAalignment_mirmap.rename(
+        columns={'Score': 'Score_y'})
+    df_miRNAalignment_all['Score_x'] = pd.NA
+    df_miRNAalignment_all['global_link'] = pd.NA
+
+# else:
+#     print("No alignments were found")
+    
 
 # Add a pydeg_settings (int) column
 pydeg_settings_inv = {v: k for k, v in pydeg_settings.items()}
-df_miRNAalignment_all['pydeg_settings'] = df_miRNAalignment_all[
-    'pydeg_settings_label'].replace(pydeg_settings_inv)
-df_miRNAalignment_all.drop("index", axis=1, inplace=True)
+# try:
+if 'df_miRNAalignment_all' in locals():
+    df_miRNAalignment_all['pydeg_settings'] = df_miRNAalignment_all[
+        'pydeg_settings_label'].replace(pydeg_settings_inv)
+    if 'index' in df_miRNAalignment_all.columns:
+        df_miRNAalignment_all.drop("index", axis=1, inplace=True)
 
-# Remove row with no links for both alignments
-ibool = df_miRNAalignment_all['global_link'].isna() &\
-    df_miRNAalignment_all['mirmap_link'].isna()
-df_miRNAalignment_all = df_miRNAalignment_all[~ibool]
+    # Remove row with no links for both alignments
+    ibool = df_miRNAalignment_all['global_link'].isna() &\
+        df_miRNAalignment_all['mirmap_link'].isna()
+    df_miRNAalignment_all = df_miRNAalignment_all[~ibool]
 
-# Write data frame to file
-out_file = os.path.join(
-    output_dir, "data", "miRNA_alignment_global_mirmap_" +
-    ivars["ibase"] + ".tsv")
-df_miRNAalignment_all.to_csv(out_file, sep='\t', index=False)
-
-
-# Create dummy columns for
-# transcripts with links to plots and alignment
-mirna_df = df_miRNAalignment_all[['Transcript',
-                                  'pydeg_settings',
-                                  'global_link',
-                                  'mirmap_link']]
-# remove rows with no links
-no_align = mirna_df['global_link'].isna() & mirna_df['mirmap_link'].isna()
-mirna_df = mirna_df[~no_align]
-
-# create index column for merging
-mirna_df['indx'] = mirna_df[['Transcript',
-                             'pydeg_settings']].astype(str).apply(
-                                 "_".join, axis=1)
-
-# remove duplicated index
-indx_dup = mirna_df["indx"].duplicated()
-mirna_df = mirna_df[~indx_dup]
-
-# create dummy column for links and remove unnecessary columns
-mirna_df.drop(['Transcript', 'pydeg_settings',
-               'global_link', 'mirmap_link'], axis=1, inplace=True)
-mirna_df['miRNA_link'] = 'Yes'
+    # Write data frame to file
+    out_file = os.path.join(
+        output_dir, "data", "miRNA_alignment_global_mirmap_" +
+        ivars["ibase"] + ".tsv")
+    df_miRNAalignment_all.to_csv(out_file, sep='\t', index=False)
 
 
-# Create indx column for merging and dummy column for plots
-pydeg_df['indx'] = pydeg_df[
-    ['tx_name',
-     'pydeg_settings']].astype(str).apply("_".join, axis=1)
-plot_link_bool = pydeg_df['peak_plot_link'].isna() &\
-    pydeg_df['peak_plot_link'].isna()
-pydeg_df['plot_link'] = plot_link_bool.map({True: 'No', False: 'Yes'})
+    # Create dummy columns for
+    # transcripts with links to plots and alignment
+    mirna_df = df_miRNAalignment_all[['Transcript',
+                                      'pydeg_settings',
+                                      'global_link',
+                                      'mirmap_link']]
+    # remove rows with no links
+    no_align = mirna_df['global_link'].isna() & mirna_df['mirmap_link'].isna()
+    mirna_df = mirna_df[~no_align]
 
-# merge and replace NaN values with 'No'
-pydeg_df = pd.merge(pydeg_df, mirna_df, on='indx', how='left')
-pydeg_df["miRNA_link"] = pydeg_df[
-    "miRNA_link"].map({'Yes': 'Yes', np.nan: 'No'})
+    # create index column for merging
+    mirna_df['indx'] = mirna_df[['Transcript',
+                                 'pydeg_settings']].astype(str).apply(
+                                     "_".join, axis=1)
+
+    # remove duplicated index
+    indx_dup = mirna_df["indx"].duplicated()
+    mirna_df = mirna_df[~indx_dup]
+
+    # create dummy column for links and remove unnecessary columns
+    mirna_df.drop(['Transcript', 'pydeg_settings',
+                   'global_link', 'mirmap_link'], axis=1, inplace=True)
+    mirna_df['miRNA_link'] = 'Yes'
+
+
+    # Create indx column for merging and dummy column for plots
+    pydeg_df['indx'] = pydeg_df[
+        ['tx_name',
+         'pydeg_settings']].astype(str).apply("_".join, axis=1)
+    plot_link_bool = pydeg_df['gene_plot_link'].isna() &\
+        pydeg_df['peak_plot_link'].isna()
+    pydeg_df['plot_link'] = plot_link_bool.map({True: 'No', False: 'Yes'})
+
+    # merge and replace NaN values with 'No'
+    pydeg_df = pd.merge(pydeg_df, mirna_df, on='indx', how='left')
+    pydeg_df.drop(['indx'], axis=1, inplace=True)
+    pydeg_df["miRNA_link"] = pydeg_df[
+        "miRNA_link"].map({'Yes': 'Yes', np.nan: 'No'})
+# except NameError:
+#     # Handle NameError if it occurs
+#     print("No aligments were found") 
+else:
+    plot_link_bool = pydeg_df['gene_plot_link'].isna() &\
+        pydeg_df['peak_plot_link'].isna()
+    pydeg_df['plot_link'] = plot_link_bool.map({True: 'No', False: 'Yes'})
+    pydeg_df["miRNA_link"] = 'No'
 
 # Write list of peaks to file
 out_file = os.path.join(

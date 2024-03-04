@@ -45,7 +45,7 @@ do
     then
 	dir_exist "$index_dir/$bowtie_dir"
 	bowtie2-build "${fasta_list[i]}" "${index_path_list[i]}"
-	cp "$At_genome" "$index_dir/$bowtie_dir/$bowtie_dir".fa
+	# cp "$At_genome" "$index_dir/$bowtie_dir/$bowtie_dir".fa
 	wait
     fi
 done

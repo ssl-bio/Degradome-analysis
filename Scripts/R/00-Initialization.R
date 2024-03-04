@@ -104,9 +104,9 @@ idirs <- list.dirs(env$output_dirB,
 input_df <- data.frame(ivars = c("bam_dir", "bam_tr_dir",
                                "bigwig_dir", "bigwig_dir", "pydeg_dir",
                                "htseq_dir"),
-                       ikeys = c("bam_genomic", "bam_transcript",
-                               "bigwig_genomic", "bigwig_chromosome",
-                               "PyDegradome",  "htseq_genomic"))
+                       ikeys = c("bam_genomic$", "bam_transcript$",
+                               "bigwig_genomic$", "bigwig_chromosome$",
+                               "PyDegradome$",  "htseq_genomic$"))
 
 for (i in seq_len(nrow(input_df))) {
     ivar <- input_df[i, 1]
@@ -216,17 +216,21 @@ rownames(idesign) <- seq_len(nrow(idesign))
 
 sample_list <- c(test_samples, control_samples)
 
-dg_bigwig_list <- structure(file.path(bam_dir, sample_list),
-                            names = sample_list)
+if (exists("bam_dir")) {
+    dg_bigwig_list <- structure(file.path(bam_dir, sample_list),
+                                names = sample_list)
 
-dg_bam_list <- structure(file.path(bam_dir, paste0(sample_list,
-                                                  ".bam")),
-                         names = sample_list)
+    dg_bam_list <- structure(file.path(bam_dir, paste0(sample_list,
+                                                       ".bam")),
+                             names = sample_list)
+}
 
-dg_bam_tr_list <- structure(file.path(bam_tr_dir,
-                                      paste0(sample_list,
-                                             "_uni_sort.bam")),
-                            names = sample_list)
+if (exists("bam_tr_dir")){
+    dg_bam_tr_list <- structure(file.path(bam_tr_dir,
+                                          paste0(sample_list,
+                                                 "_uni_sort.bam")),
+                                names = sample_list)
+}
 ##--------------------------------------------------
 ## Build a transcript info data frame
 ## Data frame with feature, start, stop, gene name information from biomaRt

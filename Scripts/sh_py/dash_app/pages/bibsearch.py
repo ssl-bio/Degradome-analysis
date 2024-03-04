@@ -1,3 +1,4 @@
+import os
 import re
 import plotly.graph_objects as go
 from dash import dcc, html
@@ -136,20 +137,24 @@ def import_vars(base):
 
 def import_data(base, ivars, py_settings_str):
     base = ivars['ibase']
-    py_settings=int(py_settings_str)
-    
+    py_settings = int(py_settings_str)
+
     # Import miRNA alignment dataframe
-    miRNA_df = pd.read_csv(
-        f"./data/miRNA_alignment_global_mirmap_{base}.tsv",
-        sep='\t',
-        low_memory=False,
-    )
-    miRNA_df = miRNA_df.loc[(miRNA_df['pydeg_settings'].eq(py_settings))]
-    miRNA_df['id'] = range(0, len(miRNA_df))
-    miRNA_df.loc[:, 'Score_y'] = miRNA_df['Score_y'].\
-        round(2)
-    miRNA_df.loc[:, 'Comparison'] = miRNA_df['Comparison'].\
-        replace(ivars['comparison_dict'])
+    input_file = f"./data/miRNA_alignment_global_mirmap_{base}.tsv"
+    if os.path.isfile(input_file):
+        miRNA_df = pd.read_csv(
+            input_file,
+            sep='\t',
+            low_memory=False,
+        )
+        miRNA_df = miRNA_df.loc[(miRNA_df['pydeg_settings'].eq(py_settings))]
+        miRNA_df['id'] = range(0, len(miRNA_df))
+        miRNA_df.loc[:, 'Score_y'] = miRNA_df['Score_y'].\
+            round(2)
+        miRNA_df.loc[:, 'Comparison'] = miRNA_df['Comparison'].\
+            replace(ivars['comparison_dict'])
+    else:
+        miRNA_df = None
 
     # Import and process pydegradome data
     pydeg_main = pd.read_csv(
